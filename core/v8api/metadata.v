@@ -106,16 +106,20 @@
 	:virt
 	  #if ver < 8.3.6
 		+2
-	  #else
+	  #elif ver <8.3.7.1759
 	    +6
+	  #else
+	    +7
 	  #endif
 		IMDObject@+ objById(const Guid& objId)
 		+4
 		IMDObject@+ objByTypeId(const Guid& typeId)
 	  #if ver < 8.3.6
 		52
-	  #else
+	  #elif ver <8.3.7.1759
 	    56
+	  #else
+		57
 	  #endif
 		IMDContainer@+ masterContainer()
 
@@ -204,6 +208,9 @@
 	:virt
 	  #if ver >= 8.3.6
 	    +4
+	  #endif
+	  #if ver >= 8.3.7.1759
+	    +1
 	  #endif
 		const v8string& getName()
 		v8string getSynonym(const v8string&in lc)

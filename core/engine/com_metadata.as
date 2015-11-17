@@ -985,6 +985,7 @@ Variant image2pict(IUnknown&& img)
 
 IMDContainer&& getMasterContainer(IMDContainer&& cont)
 {
+	dumpVtable(&&cont);
     for (IMDContainer&& master = cont.masterContainer(); master !is null; &&master = cont.masterContainer())
         &&cont = master;
     return cont;
