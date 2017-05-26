@@ -1,7 +1,18 @@
 <html>
-        <head>
-                <meta content="text/html;charset=utf-8"/>
-        </head>
+<head>
+	<meta charset="UTF-8">
+	<style>
+	html, body {
+		width: 100%;
+		height: 100%;
+	}
+	.logo {
+		position:absolute;
+		right: 10px;
+		bottom: 10px;
+	}
+	</style>
+</head>
 <body style="background-color:#FCFAEB;margin:auto;padding:0px;" scroll="no" onresize="setPageSize()">
 <script>
 /*
@@ -123,11 +134,7 @@ function setDesigner(des)
 function setPageSize()
 {
 	marginbottom = document.body.clientHeight - 15
-	marginright = document.body.clientWidth-15
-	var logo = document.getElementById("logo")
-	logo.style.top = "" + (document.body.clientHeight - 10 - logo.height) + "px";
-	logo.style.left = "" + (document.body.clientWidth - 10 - logo.width) + "px";
-	//document.getElementById("message").innerHTML = "<h1>" + navigator.userAgent + "</h1>"
+	marginright = document.body.clientWidth - 15
 }
 
 function gotoSite() {
@@ -138,11 +145,11 @@ function gotoSite() {
 </script>
 <center>
         <div><h2>Снегопат: проект по расширению<br/>возможностей Конфигуратора<br/>1С-Предприятия 8.2, 8.3.<br/>
-        &copy;Александр Орефков 2009-2015.<br/>
+        &copy;Александр Орефков 2009-2016.<br/>
         <a href="#" onclick="gotoSite()">https://snegopat.ru</a>
         </h2></div>
         <div id="message"></div>
 </center>
-<img id="logo" src = "img/banner1.jpg" style="position:absolute;"/>
+<img class="logo" id="logo" src = "img/banner1.jpg"/>
 </body>
 </html>

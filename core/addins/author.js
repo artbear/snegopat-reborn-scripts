@@ -14,6 +14,7 @@ global.connectGlobals(SelfScript);
 /*@
 Cкрипт "Авторский комментарий" (author.js) для проекта "Снегопат"
 
+
 Описание: Реализует возможности разметки кода по признакам модифицированности с указанием реквизитов автора.
 @*/
 
@@ -86,6 +87,10 @@ function getSignature() {
     return fmt.replace(ptn, function (match, p1, p2, offset, s) {
         // p1 - имя управляющей конструкции.
         // p2 - параметр управляющей конструкции (для ДатаВремя).
+		if (!MarkerFormatStringParameters[p1]) {
+			Message('В настройках подписи для авторского комментария встретилась неизвестная конструкция "' + p1 + '"');
+			return p1;
+		}
         return MarkerFormatStringParameters[p1].call(null, p2);
     });
 }
@@ -276,6 +281,26 @@ function НадписьДатаВремяНажатие (Элемент) {
     if (КонструкторФорматнойСтроки.ОткрытьМодально())
         addToSignatureFormat(form, "ДатаВремя#" + КонструкторФорматнойСтроки.Текст);
 }
+
+
+//[+] Brad 19.12.2013
+function НадписьТекущаяЗадачаНажатие (Элемент) {
+    addToSignatureFormat(form, Элемент.val.Заголовок);
+}
+
+function getCurentTask() {
+	
+	var pflCurTask = 'Задачи/ТекущаяЗадача';
+	
+	var s = v8New("Структура","Задача,Описание","","");	
+	profileRoot.createValue(pflCurTask, s, pflSnegopat)    
+    s = profileRoot.getValue(pflCurTask);
+	
+	return s.Задача;
+}
+// Brad 19.12.2013
+
+
 //} Обработчики элементов управления формы
 
 //{ Горячие клавиши по умолчанию.
@@ -293,6 +318,9 @@ addFormatStringParam("ПолноеИмяПользователя", "parseTpl(nam
 addFormatStringParam("ИмяПользователяХранилищаКонфигурации", "parseTpl(name)")
 addFormatStringParam("ДатаВремя", "parseTpl(name, '\"' + p + '\"')")
 addFormatStringParam('ИмяПользователяОС', "(new ActiveXObject('WScript.Shell')).ExpandEnvironmentStrings('%USERNAME%')");
+//[+] Brad 19.12.2013
+addFormatStringParam("ТекущаяЗадача", "getCurentTask()")
+// Brad 19.12.2013
 //} Параметры подстановки, используемые в форматной строке подписи.
 
 var Settings = getSettings();

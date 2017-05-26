@@ -5,30 +5,28 @@
 ParseMethodResult&& lastParseMethodResult;
 bool enableAutoReplaces;
 OptionsEntry oeEnableAutoReplaces("Autoreplace", function(v) { v = true; },
-	function(v) { v.getBoolean(enableAutoReplaces); },
-	function(v) { v.getBoolean(enableAutoReplaces); return false; });
+    function(v) { v.getBoolean(enableAutoReplaces); },
+    function(v) { v.getBoolean(enableAutoReplaces); return false; });
 
 bool enableSmartEnter;
 OptionsEntry oeEnableSmartEnter("EnableSmartEnter", function(v) { v = true; },
-	function(v) { v.getBoolean(enableSmartEnter); },
-	function(v) { v.getBoolean(enableSmartEnter); return false; });
+    function(v) { v.getBoolean(enableSmartEnter); },
+    function(v) { v.getBoolean(enableSmartEnter); return false; });
 
 bool enableSnegoList;
 OptionsEntry oeEnableSnegoList("EnableSmartList", function(v) { v = true; },
-	function(v) { v.getBoolean(enableSnegoList); },
-	function(v) { v.getBoolean(enableSnegoList); return false; });
+    function(v) { v.getBoolean(enableSnegoList); },
+    function(v) { v.getBoolean(enableSnegoList); return false; });
 
 uint qaCharsCount;
 OptionsEntry oeQACharsCount("QuickActivateCharsCount", function(v){v = 1; },
-	function(v){Numeric n; v.getNumeric(n); qaCharsCount = n; },
-	function(v){Numeric n; v.getNumeric(n); qaCharsCount = n; return false; });
+    function(v){Numeric n; v.getNumeric(n); qaCharsCount = n; },
+    function(v){Numeric n; v.getNumeric(n); qaCharsCount = n; return false; });
 
 // Данные редактора для текстового процессора модулей. Пока хранит только флаг нужности показа списка
-class ModuleEditorData : EditorData
-{
+class ModuleEditorData : EditorData {
     bool needQuickActivate;
-    ModuleEditorData()
-    {
+    ModuleEditorData() {
         needQuickActivate = true;
     }
 };
@@ -41,37 +39,39 @@ enum ActivateModes {
     modePreproc     // в инструкции препроцессора
 };
 
-string getTextLine(TextManager&& tm, uint line)
-{
-    v8string wline;
-    tm.getLine(line, wline);
-    return wline.str;
+string getTextLine(TextManager&& tm, uint line) {
+	v8string s;
+	IUnknown&& u;
+	tm.getCashObject(u);
+	tm.getLineFast(line, s, u);
+	return s.str;
 }
 
-bool my_is_alpha(wchar_t symbol)
-{
+void getTextLine(TextManager&& tm, uint line, v8string& s) {
+	IUnknown&& u;
+	tm.getCashObject(u);
+	tm.getLineFast(line, s, u);
+}
+
+bool my_is_alpha(wchar_t symbol) {
     return mem::byte[symbolClassTable + symbol] == symbAlpha;
 }
 
-bool my_is_alnum(wchar_t symbol)
-{
+bool my_is_alnum(wchar_t symbol) {
     return mem::byte[symbolClassTable + symbol] == symbAlpha || (symbol >= '0' && symbol <= '9');
 }
 
-bool is_first_name_symbol(wchar_t symbol)
-{
+bool is_first_name_symbol(wchar_t symbol) {
     return my_is_alpha(symbol) || '_' == symbol;
 }
 
-bool is_name_symbol(wchar_t symbol)
-{
+bool is_name_symbol(wchar_t symbol) {
     return my_is_alnum(symbol) || '_' == symbol;
 }
 
 // Выяснить контекст вызова подсказки
 // также возвращает начало текущей строки до каретки и последнюю лексему в ней.
-ActivateModes getActivateMode(TextManager&& tm, const TextPosition&in caretPos, string& beginOfLine, string& lastLexem)
-{
+ActivateModes getActivateMode(TextManager&& tm, const TextPosition&in caretPos, string& beginOfLine, string& lastLexem) {
     uint symbolsToCaret = caretPos.col - 1;
     beginOfLine = getTextLine(tm, caretPos.line).rtrim("\r\n").padRight(' ', symbolsToCaret);
     beginOfLine.setLength(symbolsToCaret);
@@ -81,7 +81,7 @@ ActivateModes getActivateMode(TextManager&& tm, const TextPosition&in caretPos, 
     do {
         source.next(lex);
     } while (!(lex.isEmpty() || source.atEnd()));
-    
+
     if (lexPreproc == lex.type)
         return modePreproc;
     else if (lexRemark == lex.type || lexNumber == lex.type || lexDateOpen == lex.type || lexDate == lex.type)
@@ -95,19 +95,16 @@ ActivateModes getActivateMode(TextManager&& tm, const TextPosition&in caretPos, 
     }
 }
 
-class ModuleTextProcessor : TextProcessor, ModuleTextSource
-{
+class ModuleTextProcessor : TextProcessor, ModuleTextSource {
     uint lastMethodBeginLine = 0;
     ModuleElements&& moduleElements;
     TextDoc&& td;
 
-    void getModuleSourceText(v8string& text)
-    {
+    void getModuleSourceText(v8string& text) {
         td.tm.save(text);
     }
     // Подключение к и отключение от текстового документа
-    void setTextDoc(TextDoc&& textDoc)
-    {
+    void setTextDoc(TextDoc&& textDoc) {
         if (textDoc !is null) { // Подключение к текстовому документу
             // Проверим, не является ли он каким-либо модулем объекта метаданных
             // и если да, то надо поискать, не создан ли уже для него парсер структуры
@@ -126,12 +123,11 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
     }
 
     void connectEditor(TextWnd&& editor) { &&editor.editorData = ModuleEditorData(); }
-    void afterChar(TextWnd&& editor, wchar_t symbol)
-    {
+    void afterChar(TextWnd&& editor, wchar_t symbol) {
         if (editor !is activeTextWnd)
             return;
-		if (!enableAutoReplaces && !enableSmartEnter && (!enableSnegoList || (symbol != 0 && qaCharsCount == 0)))
-			return;
+        if (!enableAutoReplaces && !enableSmartEnter && (!enableSnegoList || (symbol != 0 && qaCharsCount == 0)))
+            return;
         bool bItsNameSymbol = is_name_symbol(symbol);
         ModuleEditorData&& pData = cast<ModuleEditorData>(editor.editorData);
         if (!bItsNameSymbol)
@@ -141,16 +137,16 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
 
         editor.ted.getCaretPosition(caretPos, false);
         if ('\r' == symbol) {
-			if (enableSmartEnter)
-				smartEnter(caretPos, editor);
+            if (enableSmartEnter)
+                smartEnter(caretPos, editor);
             return;
         }
         string lineBegin, lastLexem;
         ActivateModes mode = getActivateMode(editor.textDoc.tm, caretPos, lineBegin, lastLexem);
         if (modeName == mode && doAutoReplace(symbol, lineBegin, caretPos, editor))
             return;
-		if (!enableSnegoList || (symbol != 0 && qaCharsCount == 0))
-			return;
+        if (!enableSnegoList || (symbol != 0 && qaCharsCount == 0))
+            return;
 
         if ((modeName == mode && bItsNameSymbol && pData.needQuickActivate && lastLexem.length >= qaCharsCount) || symbol == 0) {
             activateInModule(editor, lastLexem, caretPos, mode, symbol);
@@ -162,8 +158,7 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
             ParamShow::get().activate();
         */
     }
-    bool onKeyDown(TextWnd&& editor, uint wParam, uint lParam)
-    {
+    bool onKeyDown(TextWnd&& editor, WPARAM wParam, LPARAM lParam) {
         switch (wParam) {
         case VK_LEFT:       case VK_RIGHT:      case VK_UP:
         case VK_DOWN:       case VK_PRIOR:      case VK_NEXT:
@@ -180,23 +175,24 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
         }
         return false;
     }
-    void itemInserted(TextWnd&& editor, SmartBoxInsertableItem&& item)
-    {
+    void itemInserted(TextWnd&& editor, SmartBoxInsertableItem&& item) {
         if (item !is null)
             cast<ModuleEditorData>(editor.editorData).needQuickActivate = true;
     }
 
     // Вызывается при нажатии Enter'а.
-    void smartEnter(TextPosition& caretPos, TextWnd&& editor)
-    {
+    void smartEnter(TextPosition& caretPos, TextWnd&& editor) {
         v8string lineOver;
         v8string line;
-        editor.textDoc.tm.getLine(caretPos.line - 1, lineOver);
+		IUnknown&& cashObj;
+		TextManager&& tm = editor.textDoc.tm;
+		tm.getCashObject(cashObj);
+        tm.getLineFast(caretPos.line - 1, lineOver, cashObj);
         lex_provider lexSrc(lineOver.cstr);
         lexem lex;
         while (lexSrc.next(lex)) {
             if (lexQuoteOpen == lex.type) {
-                editor.textDoc.tm.getLine(caretPos.line, line);
+                tm.getLineFast(caretPos.line, line, cashObj);
                 if (line.str.ltrim().substr(0, 1) != "|") {
                     // Надо вставить |
                     // Получим пробельные символы для автоотступа
@@ -217,19 +213,18 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
         }
     }
 
-    bool doAutoReplace(wchar_t symbol, const string&in lineBegin, TextPosition&in caretPos, TextWnd&& pTxtWnd)
-    {
+    bool doAutoReplace(wchar_t symbol, const string&in lineBegin, TextPosition&in caretPos, TextWnd&& pTxtWnd) {
         if (!enableAutoReplaces)
             return false;
         //	Делаем автозамены: ? ++ -- += -= *= /= %= 
         uint len = lineBegin.length;
-        /*
+        
         if ('?' == symbol) {
-            IntelliSite& is = IntelliSite::get();
-            is.addItem(Delimeters::getDelimeter(Delimeters::question));
-            is.show(CString(), pTxtWnd);
-            return TRUE;
-        }*/
+            IntelliSite&& ist = getIntelliSite();
+			ist.addItem(Delimeters::getDelimeter(Delimeters::question));
+            ist.show(pTxtWnd, "");
+            return true;
+        }
         // Для начала определим, надо ли вообще делать автозамену
         if (len < 3)
             return false;
@@ -280,8 +275,7 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
         insertInSelection(pTxtWnd.ted, pTxtWnd.textDoc.tm, pTxtWnd.textDoc.itm, replace, true, false);
         return true;
     }
-    void activateInModule(TextWnd&& editor, const string&in lastLexem, TextPosition& caretPos, ActivateModes mode, wchar_t symbol)
-    {
+    void activateInModule(TextWnd&& editor, const string&in lastLexem, TextPosition& caretPos, ActivateModes mode, wchar_t symbol) {
         // Для начала получим текст текущего метода
         uint line = caretPos.line, col = caretPos.col;
         string methodText;
@@ -333,6 +327,10 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
         // Добавим ключевые слова
         getKeywordsGroup().processParseResult(parseResult, isite);
         // Добавим разделители
+		if (parseResult.isFlagSet(wantDefVal)) {
+			isite.addItem(Delimeters::getDelimeter(Delimeters::quote));
+			isite.addItem(Delimeters::getDelimeter(Delimeters::date));
+		}
         // Добавим типы
         addTypes(parseResult, isite);
         // Для вставки некоторых элементов нужна информация о результатах парсинга
@@ -340,53 +338,51 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
         // покажем список
         isite.show(editor, lastLexem);
     }
-    void activate(TextWnd&& editor)
-    {
-		if (!enableSnegoList)
-			return;
-		ModuleEditorData&& pData = cast<ModuleEditorData>(editor.editorData);
+    void activate(TextWnd&& editor) {
+        if (!enableSnegoList)
+            return;
+        ModuleEditorData&& pData = cast<ModuleEditorData>(editor.editorData);
         if (pData is null)
             return;
         pData.needQuickActivate = true;
         afterChar(editor, 0);
     }
-    IMDContainer&& myMainContainer()
-    {
+    IMDContainer&& myMainContainer() {
         return td.mdInfo is null ? editedMetaDataCont() : getMasterContainer(td.mdInfo.container);
     }
-    void addCommonModules(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& methNames, NoCaseSet& propNames)
-    {
-        // Обращение к общим модулям доступно не из всех модулей
+    void addCommonModules(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& methNames, NoCaseSet& propNames) {
         TextDocMdInfo&& mdInfo = td.mdInfo;
-        if (mdInfo !is null && (mdInfo.mdPropUuid == gModStdApp) || // Модуль обычного приложения
-            (mdInfo.mdPropUuid == gModMngApp) ||                    // Модуль управляемого приложения
-            (mdInfo.mdPropUuid == gModExtCon) ||                    // Модуль внешнего соединения
-            (mdInfo.mdPropUuid == gModSeance))                      // Модуль сеанса
-            return;
         // Надо узнать основной режим запуска - обычный или управляемый
         IMDContainer&& myContainer = myMainContainer();
         IMDObject&& rootObj = myContainer.unk;
         bool runModeIsManaged = getRunModeIsManaged(rootObj);
         // Добавим элементы из одного из глобальных модулей
-        ModuleElements&& globalModuleParser = getModuleElementsParser(rootObj, runModeIsManaged ? gModMngApp : gModStdApp);
-        globalModuleParser.parse();
-        globalModuleParser.processParseResultForOtherModule(result, isite, methNames, propNames);
+		if (mdInfo !is null && !(mdInfo.mdPropUuid == gModStdApp || // Модуль обычного приложения
+			mdInfo.mdPropUuid == gModMngApp ||                    // Модуль управляемого приложения
+			mdInfo.mdPropUuid == gModExtCon ||                    // Модуль внешнего соединения
+			mdInfo.mdPropUuid == gModSeance)) {                     // Модуль сеанса
+			ModuleElements&& globalModuleParser = getModuleElementsParser(rootObj, runModeIsManaged ? gModMngApp : gModStdApp);
+			globalModuleParser.parse();
+			globalModuleParser.processParseResultForOtherModule(result, isite, methNames, propNames);
+		}
         // Теперь переберём общие модули.
         for (uint i = 0, im = rootObj.childCount(mdClassCmnModule); i < im; i++) {
             IMDObject&& obj = rootObj.childAt(mdClassCmnModule, i);
-            Value val;
-            obj.mdPropVal(gcmIsGlobal, val);
-            bool isGlobal;
-            val.getBoolean(isGlobal);
-            if (isGlobal) {
-                ModuleElements&& me = getModuleElementsParser(obj, gModule);
-                me.parse();
-                me.processParseResultForOtherModule(result, isite, methNames, propNames);
-            } else {
-                string nameOfModule = mdObjName(obj);
-                if (propNames.insert(nameOfModule))
-                    isite.addItem(CommonModuleItem(nameOfModule));
-            }
+			if (mdInfo is null || obj.id != mdInfo.object.id) {
+				Value val;
+				obj.mdPropVal(gcmIsGlobal, val);
+				bool isGlobal;
+				val.getBoolean(isGlobal);
+				if (isGlobal) {
+					ModuleElements&& me = getModuleElementsParser(obj, gModule);
+					me.parse();
+					me.processParseResultForOtherModule(result, isite, methNames, propNames);
+				} else {
+					string nameOfModule = mdObjName(obj);
+					if (propNames.insert(nameOfModule))
+						isite.addItem(CommonModuleItem(nameOfModule));
+				}
+			}
         }
     }
 };
@@ -399,12 +395,11 @@ class ModuleTextProcessor : TextProcessor, ModuleTextSource
 class ExtContextData {
     array<array<SmartBoxItem&&>> store;
     array<array<any>&&> extModules;
-    
-    ExtContextData(TextDocMdInfo&& mdInfo)
-    {
-        if (mdInfo is null || mdInfo.object is null)
+
+    ExtContextData(TextDocMdInfo&& mdInfo) {
+		store.resize(scgLast);
+		if (mdInfo is null || mdInfo.object is null)
             return;
-        store.resize(scgLast);
         // Нужно получить поставщик информации о типах для этой конфигурации
         IMDEditService&& mdes = getMDEditService();
         IConfigMngrUI&& uicfgmngr;
@@ -478,12 +473,10 @@ class ExtContextData {
             }
         }
     }
-    protected void addExtModule(IMDObject&& mdObj, const Guid& mdProp)
-    {
+    protected void addExtModule(IMDObject&& mdObj, const Guid& mdProp) {
         extModules.insertLast(array<any> = {any(&&mdObj), any(mdProp)});
     }
-    void processParseResult(ParseMethodResult&& res, IntelliSite&& isite, NoCaseSet& methNames, NoCaseSet& propNames)
-    {
+    void processParseResult(ParseMethodResult&& res, IntelliSite&& isite, NoCaseSet& methNames, NoCaseSet& propNames) {
         // Сначала добавим то, что есть
         if (res.isFlagSet(allowProcedure))
             isite.addItemGroup(checkAccess(checkNamesInSet(resetExclude(store[scgProcedure]), methNames), res.allowedAccesses));
@@ -505,8 +498,7 @@ class ExtContextData {
     }
 };
 
-uint fixupAccessModes(uint currentModes, execContextTypes direcrive)
-{
+uint fixupAccessModes(uint currentModes, execContextTypes direcrive) {
     switch (direcrive) {
     case ecNone:
         return currentModes;
@@ -524,8 +516,7 @@ uint fixupAccessModes(uint currentModes, execContextTypes direcrive)
     return currentModes;
 }
 
-bool getRunModeIsManaged(IMDObject&& mdRoot)
-{
+bool getRunModeIsManaged(IMDObject&& mdRoot) {
     Value val;
     mdRoot.mdPropVal(gMainRunMode, val);
     v8string res;
@@ -538,8 +529,7 @@ bool getRunModeIsManaged(IMDObject&& mdRoot)
     return res.str.substr(-2, 1)[0] == '1';
 }
 
-void addLocalVariables(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& propNames)
-{
+void addLocalVariables(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& propNames) {
     bool needAddItems = result.isFlagSet(allowModuleVar);
     for (uint i = 0, im = result.localVarsCount(); i < im; i++) {
         LocalVarItem&& lv = result.localVar(i);
@@ -551,8 +541,7 @@ void addLocalVariables(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSe
     }
 }
 
-void addAutoLocalVariables(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& propNames)
-{
+void addAutoLocalVariables(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& propNames) {
     if (!result.isFlagSet(allowModuleVar))
         return;
     for (uint i = 0, im = result.localVarsCount(); i < im; i++) {
@@ -562,8 +551,7 @@ void addAutoLocalVariables(ParseMethodResult&& result, IntelliSite&& isite, NoCa
     }
 }
 
-void addV8stock(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& methNames, NoCaseSet& propNames)
-{
+void addV8stock(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& methNames, NoCaseSet& propNames) {
     if (result.isFlagSet(allowProcedure)) {
         isite.addItemGroup(checkAccess(checkNamesInSet(resetExclude(v8stock[stockGlobalProc, langCmn]), methNames), result.allowedAccesses));
         if (0 != (useLangs & useLangEng))
@@ -606,20 +594,22 @@ void addV8stock(ParseMethodResult&& result, IntelliSite&& isite, NoCaseSet& meth
     }
 }
 
-void addTypes(ParseMethodResult&& result, IntelliSite&& isite)
-{
-    if (result.isFlagSet(allowNewTypes)) {
-        isite.addItemGroup(checkAccess(resetExclude(v8stock[stockTypeNames, langCmn]), result.allowedAccesses));
-        if (0 != (useLangs & useLangEng))
-            isite.addItemGroup(checkAccess(resetExclude(v8stock[stockTypeNames, langEng]), result.allowedAccesses));
-        if (0 != (useLangs & useLangRus))
-            isite.addItemGroup(checkAccess(resetExclude(v8stock[stockTypeNames, langRus]), result.allowedAccesses));
-    }
+void addTypes(ParseMethodResult&& result, IntelliSite&& isite) {
+    if (result.isFlagSet(allowNewTypes))
+		addTypeStores(isite, result.allowedAccesses);
 }
 
-void showV8Assist()
-{
+void addTypeStores(IntelliSite&& isite, uint allowedAccesses) {
+	isite.addItemGroup(checkAccess(resetExclude(v8stock[stockTypeNames, langCmn]), allowedAccesses));
+	if (0 != (useLangs & useLangEng))
+		isite.addItemGroup(checkAccess(resetExclude(v8stock[stockTypeNames, langEng]), allowedAccesses));
+	if (0 != (useLangs & useLangRus))
+		isite.addItemGroup(checkAccess(resetExclude(v8stock[stockTypeNames, langRus]), allowedAccesses));
+	isite.addItem(Delimeters::getDelimeter(Delimeters::parenthesisWithBackSpace));
+}
+
+void showV8Assist() {
     CommandID assist(cmdFrameGroup, cmdFrameShowAssist);
-    if (commandState(assist) & cmdStateEnabled != 0)
+    if ((commandState(assist) & cmdStateEnabled) != 0)
         sendCommandToMainFrame(assist);
 }

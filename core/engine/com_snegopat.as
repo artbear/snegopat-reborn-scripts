@@ -7,13 +7,11 @@
 
 class Snegopat {
     //[helpstring("Получить активное текстовое окно")]
-    ITextWindow&& activeTextWindow()
-    {
+    ITextWindow&& activeTextWindow() {
         return activeTextWnd is null ? null : activeTextWnd.getComWrapper();
     }
     //[helpstring("Обработать строку шаблонов")]
-    string parseTemplateString(const string& text, const string& name = "")
-    {
+    string parseTemplateString(const string& text, const string& name = "") {
         v8string wText = text;
         v8string wName = name.isEmpty() ? "Снегопат" : name;
         uint caret;
@@ -27,13 +25,38 @@ class Snegopat {
         return result;
     }
 	// [helpstring("Показать список методов модуля")]
-    bool showMethodsList()
-    {
-        return false;
+    bool showMethodsList() {
+		IntelliSite&& ist = getIntelliSite();
+		if (ist.isActive())
+			ist.hide();
+		if (activeTextWnd !is null && oneDesigner._windows.get_modalMode() == msNone) {
+			ModuleTextProcessor&& mtp = cast<ModuleTextProcessor>(activeTextWnd.textDoc.tp);
+			if (mtp !is null) {
+				if (methodsDialog is null)
+					&&methodsDialog = MethodsDialog();
+				TextPosition curPos;
+				ITextEditor&& editor = activeTextWnd.ted;
+				editor.getCaretPosition(curPos);
+				int line = methodsDialog.show(mtp.moduleElements, curPos.line);
+				if (line > 0) {
+					int len = activeTextWnd.textDoc.tm.getLineLength(line, false);
+					// сначала надо установить каретку на следующую строку, чтобы метод развернулся, если он был свёрнут
+					curPos.line = line + 1;
+					curPos.col = 1;
+					editor.setCaretPosition(curPos);
+					curPos.line = line;
+					editor.setCaretPosition(curPos);
+					editor.scrollToCaretPos();
+					editor.setSelection(curPos, TextPosition(line, len + 1), false);
+					editor.updateView();
+				}
+				return true;
+			}
+		}
+		return false;
     }
 	//[helpstring("Показать выпадающий список снегопата")]
-    bool showSmartBox()
-    {
+    bool showSmartBox() {
         // При принудительном вызове списка снегопата надо всё перепарсить
         for (uint i = 0, im = textDocStorage.openedDocs.length; i < im; i++) {
             ModuleTextProcessor&& tp = cast<ModuleTextProcessor>(textDocStorage.openedDocs[i].tp);
@@ -53,8 +76,7 @@ class Snegopat {
         }
         return true;
     }
-    IV8Lexer&& parseSources(const string& strSource, uint startLine = 1)
-    {
+    IV8Lexer&& parseSources(const string& strSource, uint startLine = 1) {
         return IV8Lexer(strSource, startLine);
     }
 	OptionsEntry&& _optionEntries = optionList;

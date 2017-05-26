@@ -177,7 +177,7 @@ SnippetsManager.prototype.selectValue = function(values) {
     var useSvcsvc = true;
     try
     {
-        var sel = new ActiveXObject('Svcsvc.Service')
+        var sel = new ActiveXObject('Svcsvc1.Service')
     }
     catch(e)
     {
@@ -654,8 +654,7 @@ function getAbsolutePath(path) {
     if (path.match(/^\.{1,2}[\/\\]/))
     {
         // Относительные пути должны задаваться относительно главного каталога Снегопата.
-        var mainFolder = profileRoot.getValue("Snegopat/MainFolder");
-        return mainFolder + path;
+        return env.pathes.main + path;
     }
     
     return path;

@@ -1,9 +1,9 @@
-﻿$engine JScript
-$uname SelectValueDialog
-$dname Класс SelectValueDialog
-$addin global
-$addin stdcommands
-$addin stdlib
+﻿//engine: JScript
+//uname: SelectValueDialog
+//dname: Класс SelectValueDialog
+//addin: global
+//addin: stdcommands
+//addin: stdlib
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////{ Cкрипт-библиотека SelectValueDialog (SelectValueDialog.js) для проекта "Снегопат"
@@ -37,7 +37,7 @@ SelectValueDialog = ScriptForm.extend({
     },
 
     construct : function (caption, values) {    
-        this._super(stdlib.getSnegopatMainFolder() + "addins\\Libs\\SelectValueDialog.ssf");
+        this._super(SelfScript.fullPath.replace(/js$/, 'ssf'));
         if (!values) {
         	values = [];
         }
