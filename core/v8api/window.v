@@ -84,6 +84,10 @@
 :iface IDocumentView {425EE301-9DD3-11D4-84AE-008048DA06DF}
 	:base IFramedView
 	:virt
+	// Артур
+	#if ver>=8.3.10
+		+1
+	#endif
 		uint document(IDocument@&)
 
 :enum TopLevelFrameType
@@ -214,6 +218,14 @@
 	:props
 		0x18
 		Vector childsIds
+
+:iface IFormViewCore {B1C6A8A6-BC9F-11D4-9437-004095E12FC7}
+	:virt
+	+1
+	+1 //IForm& getForm()
+	bool updateData(bool save, int controlId)
+	void endDialog(int result)
+	void setFormSize(const Size& size, bool inDLU = true)
 
 :struct ViewContextListNode
 	:props

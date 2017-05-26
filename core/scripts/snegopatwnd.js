@@ -2,7 +2,7 @@
 //uname: snegopatwnd
 //dname: Показ окна Снегопата
 //addin: global
-//debug: yes
+//debug: no
 //author: orefkov
 //descr: Скрипт для работы с окном снегопата
 //help: inplace
@@ -264,7 +264,7 @@ var AddinsPage = (function () {
     AddinsPage.prototype.handlerDevelopCommand = function (button) {
         addins.byUniqueName("SnegopatMainScript").invokeMacros("Разработка\\" + button.val.Text);
     };
-    // Обработка нажатия на ссылку в поле "www" на страницах описаний аддинов. Чтобы открывать во внешнем браузере 
+    // Обработка нажатия на ссылку в поле "www" на страницах описаний аддинов. Чтобы открывать во внешнем браузере
     AddinsPage.prototype.handlerAddinInfoonhelp = function (Control, pEvtObj) {
         try {
             RunApp(this.form.Controls.AddinInfo.Document.getElementById('wwwsite').innerText);
@@ -721,6 +721,9 @@ var SettingsPage = (function () {
     SettingsPage.prototype.handlerCheckChanges = function () {
         this.enableButtons(this.isParamChanged());
     };
+    SettingsPage.prototype.handlerAltEditorsНажатие = function () {
+        addins.byUniqueName('alteditors').object().setup();
+    };
     return SettingsPage;
 })();
 var HotkeysPage = (function () {
@@ -811,12 +814,427 @@ var HotkeysPage = (function () {
 })();
 var UpdatePage = (function () {
     function UpdatePage() {
+        this.wsh = new ActiveXObject("WScript.Shell");
+        this.pathToFossil = '';
+        this.pathToFecho = '';
+        this.profilePath = env.pathes.data + "proxy.cmd";
     }
     UpdatePage.prototype.connect = function (form) {
+        this.form = form;
+        var buttons = this.form.Controls.cmdBarUpdate.Buttons;
+        this.btnDownloadSnegopat = buttons.Find("btnDownloadSnegopat");
+        this.btnRefreshRepo = buttons.Find("btnRefreshRepo");
+        this.btnSubscribePage = buttons.Find("btnSubscribePage");
+        var pf = env.pathes.tools + 'fossil.exe';
+        var file = v8New("File", pf);
+        if (file.Exist()) {
+            this.pathToFossil = '"' + file.FullName + '" ';
+            this.pathToFecho = '| "' + file.Path + 'fecho.exe" ';
+        }
+        else
+            Message("Не найден путь к fossil");
+        file = v8New("File", env.pathes.core + "_fossil_");
+        this.form.localRepoPath = file.Path;
+        this.localRepoExist = file.Exist();
+        if (!this.localRepoExist) {
+            MessageBox('Нет синхронизации локального и внешнего репозитария. Заполните данные для подключения и нажмите "Обновить репозитарий"');
+        }
+        this.pathToCmd = GetTempFileName(".cmd");
+        this.pathToOut = GetTempFileName();
+        this.form.Controls.snLocalVersion.Caption = env.sVersion + ' ' + env.BuildDateTime;
+        this.remoteRepoRow = this.form.vtRepoList.Rows.Add();
+        this.localRepoRow = this.form.vtRepoList.Rows.Add();
+        this.remoteRepoRow.content = "Внешний репозитарий снегопата";
+        this.localRepoRow.content = "Локальный репозитарий";
+        if (this.localRepoExist) {
+            this.runFossilLocal('settings autosync on', false, false);
+            var res = this.runFossilLocal("remote", false, false).split('\n')[0];
+            if (res.match(/^http:/)) {
+                var login = res.match(/\/\/([^@]+)@/);
+                if (login)
+                    this.form.snegopatLogin = login[1];
+                this.form.remoteRepoURL = res.replace(/\/\/[^@]+@/, '//') + '/';
+            }
+        }
+        else
+            this.form.remoteRepoURL = "http://snegopat.ru/new/";
+        if (!this.form.remoteRepoURL.length) {
+            Message("Не удалось получить URL внешнего репозитария снегопата");
+        }
+        this.readSettings();
+        file = v8New("File", env.pathes.data + "cntlm.ini");
+        this.ntlmIni = file.FullName;
+        if (!file.Exist()) {
+            var td = v8New("TextDocument");
+            td.Write(this.ntlmIni);
+        }
+        this.fillRepoList();
     };
     UpdatePage.prototype.enter = function () {
     };
     UpdatePage.prototype.exit = function () {
+    };
+    UpdatePage.prototype.readSettings = function () {
+        var td = v8New("TextDocument");
+        try {
+            td.Read(this.profilePath);
+            td.LineSeparator = '\n';
+            var lines = td.GetText().split('\n');
+            for (var k in lines) {
+                var m = lines[k].match(/^set\s+([^=]+)=(.*)/i);
+                if (m) {
+                    if (m[1] in this.form) {
+                        var field = this.form[m[1]];
+                        if ('boolean' == typeof field)
+                            this.form[m[1]] = m[2] == 'true';
+                        else
+                            this.form[m[1]] = m[2];
+                    }
+                }
+            }
+        }
+        catch (e) { }
+    };
+    UpdatePage.prototype.storeSettings = function () {
+        var td = v8New("TextDocument");
+        var fields = ['useProxy', 'notStorePass', 'proxyAddress', 'proxyUser', 'proxyNtlm', 'ntlmAuth', 'ntlmPort'];
+        if (!this.form.notStorePass)
+            fields.push('proxyPass');
+        for (var k in fields)
+            td.AddLine("set " + fields[k] + "=" + this.form[fields[k]]);
+        td.Write(this.profilePath, "cp866");
+    };
+    UpdatePage.prototype.fillRepoList = function () {
+        try {
+            var td = v8New('TextDocument');
+            td.Read(env.pathes.core + 'snegopat.dll.version');
+            this.form.Controls.snRemoteVersion.Caption = td.GetText();
+        }
+        catch (e) { }
+        var lastLocalTime = this.readLocalTimeline();
+        this.readRemoteTimeline(lastLocalTime);
+    };
+    UpdatePage.prototype.startNtlm = function () {
+        this.killNtlm();
+        this.wsh.Run(("\"" + env.pathes.tools + "cntlm\\cntlm.exe\" -c \"" + this.ntlmIni + "\" -s -a " + this.form.ntlmAuth + " -l " + this.form.ntlmPort + " ") +
+            (this.form.proxyPass.length ? "-p \"" + this.form.proxyPass + "\"" : '') + (" -u \"" + this.form.proxyUser + "\" " + this.form.proxyAddress), 0, 1);
+    };
+    UpdatePage.prototype.killNtlm = function () {
+        this.wsh.Run("taskkill /f /IM cntlm.exe", 0, 1);
+    };
+    UpdatePage.prototype.runFossilLocal = function (command, visible, needConnect) {
+        if (this.pathToFossil.length) {
+            var td = v8New("TextDocument");
+            td.Write(this.pathToOut, 'UTF-8');
+            td.AddLine("@echo off");
+            var ntlmStarted = false;
+            if (needConnect && this.form.useProxy) {
+                var hp = "set http_proxy=http://";
+                if (this.form.proxyNtlm) {
+                    this.startNtlm();
+                    hp += '127.0.0.1:' + this.form.ntlmPort;
+                    ntlmStarted = true;
+                }
+                else {
+                    if (this.form.proxyUser.length) {
+                        hp += this.form.proxyUser;
+                        if (this.form.proxyPass)
+                            hp += ':' + this.form.proxyPass;
+                        hp += '@';
+                    }
+                    hp += this.form.proxyAddress;
+                }
+                td.AddLine(hp);
+            }
+            td.AddLine('cd /d "' + this.form.localRepoPath + '"');
+            var cmd = this.pathToFossil + command;
+            if (visible)
+                cmd += this.pathToFecho;
+            td.AddLine(cmd + ' >> "' + this.pathToOut + '"');
+            td.Write(this.pathToCmd, "cp866");
+            this.wsh.Run(this.pathToCmd, visible ? 1 : 0, 1);
+            if (ntlmStarted)
+                this.killNtlm();
+            td.Read(this.pathToOut);
+            DeleteFiles(this.pathToCmd);
+            DeleteFiles(this.pathToOut);
+            td.LineSeparator = '\n';
+            return td.GetText();
+        }
+        return "";
+    };
+    UpdatePage.prototype.runFossilRemote = function (command, handler) {
+        var _this = this;
+        if (!this.form.remoteRepoURL)
+            return;
+        var http;
+        try {
+            http = new ActiveXObject('MSXML2.ServerXMLHTTP.6.0');
+        }
+        catch (e) {
+            Message("Не удалось создать объект MSXML2.ServerXMLHTTP.6.0 для запроса данных из внешнего репозитария");
+        }
+        if (http) {
+            var url = this.form.remoteRepoURL;
+            if (url.slice(-1) != '/')
+                url += '/';
+            url += command;
+            if (this.form.useProxy) {
+                if (this.form.proxyAddress.length == 0)
+                    return;
+                var hp, ntlmStarted = false;
+                if (this.form.proxyNtlm) {
+                    this.startNtlm();
+                    hp = '127.0.0.1:' + this.form.ntlmPort;
+                    ntlmStarted = true;
+                }
+                else {
+                    hp = this.form.proxyAddress;
+                }
+                http.setProxy(2, hp);
+                http.open('get', url);
+                if (!ntlmStarted) {
+                    var uname = this.form.proxyUser;
+                    if (uname.length) {
+                        var dog = uname.indexOf('@');
+                        if (dog >= 0)
+                            uname = uname.substr(dog + 1) + '\\' + uname.substr(0, dog);
+                        http.setProxyCredentials(uname, this.form.proxyPass);
+                    }
+                }
+            }
+            else
+                http.open('get', url);
+            http.onreadystatechange = function () {
+                if (http.readyState == 4) {
+                    if (ntlmStarted)
+                        _this.killNtlm();
+                    //Message(http.getAllResponseHeaders());
+                    //Message(http.responseText);
+                    try {
+                        var r = JSON.parse(http.responseText);
+                        r.error = false;
+                        handler(r);
+                    }
+                    catch (e) {
+                        handler({ error: true });
+                    }
+                }
+            };
+            try {
+                http.send(null);
+            }
+            catch (e) {
+                if (ntlmStarted)
+                    this.killNtlm();
+                handler({ error: true });
+            }
+        }
+    };
+    UpdatePage.prototype.readLocalTimeline = function () {
+        try {
+            if (this.localRepoExist) {
+                var res = JSON.parse(this.runFossilLocal("json timeline checkin --tag trunk --limit 20 --files 1", false, false));
+                this.fillRepoRow(this.localRepoRow, res);
+                var dt = new Date(res.payload.timeline[0].timestamp * 1000);
+                function a2(p) { return (p < 10 ? '0' : '') + p; }
+                return '' + dt.getFullYear() + '-' + a2(dt.getMonth() + 1) + '-' + a2(dt.getDate()) + '%20' + a2(dt.getHours()) + ':' + a2(dt.getMinutes()) + ':' + a2(dt.getSeconds());
+            }
+            else {
+                this.fillRepoRow(this.localRepoRow, { payload: { timeline: [{ timestamp: 0, comment: "История локального репозитария отсутствует" }] } });
+            }
+        }
+        catch (e) {
+            this.fillRepoRow(this.localRepoRow, { payload: { timeline: [{ timestamp: 0, comment: e.description }] } });
+        }
+        return '2010-01-01';
+    };
+    UpdatePage.prototype.readRemoteTimeline = function (after) {
+        var _this = this;
+        this.remoteRepoRow.Rows.Clear();
+        var c = this.remoteRepoRow.Rows.Add();
+        c.content = "данные не получены...";
+        this.runFossilRemote("json/timeline/checkin?tag=trunk&after=" + after + "&files=1", function (res) {
+            _this.fillRepoRow(_this.remoteRepoRow, res);
+        });
+    };
+    UpdatePage.prototype.fillRepoRow = function (row, res) {
+        if (res && res.payload && res.payload.timeline) {
+            if (res.payload.timeline.length == 0) {
+                var r = row.Rows.Get(0);
+                r.content = "Обновлений нет";
+            }
+            else {
+                row.Rows.Clear();
+                for (var k in res.payload.timeline) {
+                    var ci = res.payload.timeline[k];
+                    var r = row.Rows.Add();
+                    var dt = new Date(ci.timestamp * 1000);
+                    r.checkinDate = dt.toLocaleDateString() + " " + dt.toLocaleTimeString();
+                    r.content = ci.comment;
+                    if (ci.files) {
+                        for (var l in ci.files) {
+                            var f = ci.files[l];
+                            var sr = r.Rows.Add();
+                            sr.content = f.state + " " + f.name;
+                        }
+                    }
+                }
+            }
+        }
+        else if (res && res.resultCode && res.resultText) {
+            var r = row.Rows.Get(0);
+            r.content = "Ошибка " + res.resultCode + ": " + res.resultText;
+        }
+        this.form.Controls.vtRepoList.Expand(row);
+    };
+    UpdatePage.prototype.handlerCmdBarUpdatebtnRefreshRepo = function () {
+        if (!this.pathToFossil) {
+            Message("fossil не найден!");
+        }
+        else {
+            if (this.localRepoExist) {
+                Message(this.runFossilLocal("update", true, true));
+            }
+            else {
+                if (!this.form.snegopatLogin.length) {
+                    MessageBox("Не задан логин на snegopat.ru");
+                    return;
+                }
+                CreateDirectory(env.pathes.repo);
+                var remoteUrl = this.form.remoteRepoURL.replace("://", "://" + this.form.snegopatLogin + "@");
+                this.runFossilLocal("clone \"" + remoteUrl + "\" -A " + this.form.snegopatLogin + " \"" + env.pathes.repo + "sn.fossil\"", true, true);
+                this.runFossilLocal("open \"" + env.pathes.repo + "sn.fossil\"", true, true);
+                var file = v8New("File", env.pathes.core + "_fossil_");
+                this.localRepoExist = file.Exist();
+                if (this.localRepoExist) {
+                    this.handlerCmdBarUpdatebtnRefreshRepo();
+                    return;
+                }
+            }
+            this.fillRepoList();
+        }
+    };
+    UpdatePage.prototype.handlerCmdBarUpdatebtnDownloadSnegopat = function () {
+        RunApp('https://snegopat.ru/spnew.php?login=' + this.form.snegopatLogin);
+    };
+    UpdatePage.prototype.handlerbtnFillRepoНажатие = function () {
+        this.fillRepoList();
+    };
+    UpdatePage.prototype.handlerntlmDetectНажатие = function () {
+        if (!this.form.proxyAddress) {
+            MessageBox("Не задан адрес прокси сервера");
+            return;
+        }
+        var td = v8New("TextDocument");
+        td.Write(this.pathToOut, 'UTF-8');
+        td.AddLine("@echo off");
+        td.AddLine("set CYGWIN=nodosfilewarning");
+        td.AddLine("echo \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044C: " + this.form.proxyUser);
+        td.AddLine("<nul set /p strt=Введите пароль: ");
+        td.AddLine(("\"" + env.pathes.tools + "cntlm\\cntlm.exe\" -c \"" + this.ntlmIni + "\" -I -M " + this.form.remoteRepoURL + " -u \"" + this.form.proxyUser + "\" " + this.form.proxyAddress) +
+            (" " + this.pathToFecho + " >> \"" + this.pathToOut + "\""));
+        //td.AddLine("pause");
+        td.Write(this.pathToCmd, "cp866");
+        //Message(td.GetText());
+        this.wsh.Run(this.pathToCmd, 1, 1);
+        td.Read(this.pathToOut);
+        DeleteFiles(this.pathToCmd);
+        DeleteFiles(this.pathToOut);
+        td.LineSeparator = '\n';
+        var text = td.GetText();
+        var found = text.match(/Config profile\s+\d\/\d... OK \(.+\)\n-{3,}.+\n([\s\S]+)\n-{3,}/);
+        if (found) {
+            text = found[1];
+            found = text.match(/^Auth\s+(.+)$/m);
+            if (found) {
+                this.form.ntlmAuth = found[1];
+                td.SetText(text);
+                td.Write(this.ntlmIni);
+                Message("Режим прокси-сервера определён как " + this.form.ntlmAuth, mInfo);
+                Message("\u0425\u0435\u0448 \u043F\u0430\u0440\u043E\u043B\u044F \u0431\u044B\u043B \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u0432 \u0444\u0430\u0439\u043B\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043A \u043F\u0440\u043E\u043C\u0435\u0436\u0443\u0442\u043E\u0447\u043D\u043E\u0433\u043E \u0441\u0435\u0440\u0432\u0435\u0440\u0430 " + this.ntlmIni + ":");
+                Message('    ' + text.replace(/\n/g, "\n    "));
+                Message("Теперь пароль в настройках можно не указывать и не хранить");
+                return;
+            }
+        }
+        Message("Не удалось определить режим сервера. Программа выдала:\n" + text, mExc1);
+        Message("Возможно, прокси-сервер не запущен или вы ввели неверные имя/пароль", mInfo);
+    };
+    UpdatePage.prototype.handlerbtnProxyReadНажатие = function () {
+        var key = '';
+        try {
+            key = this.wsh.RegRead("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer");
+        }
+        catch (e) { }
+        if (key.length) {
+            var keys = key.split(';');
+            key = '';
+            for (var i = 0; i < keys.length; i++) {
+                var tt = keys[i].match(/^(?:https?:\/\/|)([A-Za-z0-9_\.\-]+:\d+)$/);
+                if (tt) {
+                    key = tt[1];
+                    break;
+                }
+            }
+        }
+        if (key.length) {
+            this.form.proxyAddress = key;
+            try {
+                var http = new ActiveXObject('MSXML2.ServerXMLHTTP.6.0');
+            }
+            catch (e) {
+                Message("Не удалось создать объект MSXML2.ServerXMLHTTP.6.0 для проверки прокси-сервера");
+            }
+            var url = this.form.remoteRepoURL;
+            if (!url)
+                url = 'https://snegopat.ru';
+            try {
+                http.setProxy(2, key);
+                http.open('get', url);
+            }
+            catch (e) {
+                return;
+            }
+            http.onreadystatechange = function () {
+                if (http.readyState == 4) {
+                    if (http.status == 200 || http.status == 301 || http.status == 302) {
+                        MessageBox("Прокси-сервер ответил, авторизации не требует");
+                    }
+                    else if (http.status == 407) {
+                        var authMetods = [];
+                        var headers = http.getAllResponseHeaders().split('\n');
+                        for (var i in headers) {
+                            var h = headers[i].match(/^Proxy-Authenticate:\s+(\S+)/i);
+                            if (h)
+                                authMetods.push(h[1]);
+                        }
+                        MessageBox("Прокси-сервер ответил, требует авторизации, поддерживает " + authMetods.join(', '));
+                    }
+                    else {
+                        MessageBox("Прокси-сервер ответил " + http.status + ": " + http.statusText);
+                    }
+                }
+            };
+            try {
+                http.send(null);
+            }
+            catch (e) {
+                MessageBox("Не удалось проверить прокси-сервер: " + e.description);
+            }
+        }
+        else {
+            MessageBox("Адрес прокси сервера в реестре не найден");
+        }
+    };
+    UpdatePage.prototype.handlerCmdBarUpdatebtnSaveSettings = function () {
+        this.storeSettings();
+        MessageBox("Настройки сохранены");
+    };
+    UpdatePage.prototype.handlervtRepoListПриВыводеСтроки = function (Control, RowAppearance, RowData) {
+        if (!RowData.val.Parent) {
+            RowAppearance.val.Font = v8New("Font", RowAppearance.val.Font, undefined, undefined, true);
+        }
     };
     return UpdatePage;
 })();
@@ -954,6 +1372,16 @@ function restoreWindowState() {
     // Восстановим состояние окна
     profileRoot.createValue(wndStateProfilePath, true, pflSnegopat);
     var isWndOpened = profileRoot.getValue(wndStateProfilePath);
-    if (isWndOpened)
-        openWnd();
+    if (isWndOpened) {
+        if (windows.modalMode != msNone) {
+            var nd = events.connect(Designer, "onIdle", function () {
+                if (windows.modalMode == msNone) {
+                    openWnd();
+                    events.disconnectNode(nd);
+                }
+            }, "-");
+        }
+        else
+            openWnd();
+    }
 }

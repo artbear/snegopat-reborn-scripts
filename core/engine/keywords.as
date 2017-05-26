@@ -3,8 +3,7 @@
 #include "../../all.h"
 
 Keywords&& oneKeywords;
-Keywords&& getKeywordsGroup()
-{
+Keywords&& getKeywordsGroup() {
     if (oneKeywords is null)
         &&oneKeywords = Keywords();
     return oneKeywords;
@@ -40,7 +39,7 @@ class Keywords {
         KeywordItem("Except", "Except\n", formatAfterInsert),
         KeywordItem("Raise", "Raise ¦;"),
         KeywordItem("EndTry", "EndTry;\n", formatAfterInsert),
-        KeywordItem("New", "New "), // todo сделать сразу выбор типов после вставки
+        KeywordItem("New", "New ", selectTypeAfterInsert),
         KeywordItem("Execute", "Execute(\"¦\");"),
         KeywordItem("True", "True"),
         KeywordItem("False", "False"),
@@ -82,7 +81,7 @@ class Keywords {
         KeywordItem("Исключение", "Исключение\n", formatAfterInsert),
         KeywordItem("ВызватьИсключение", "ВызватьИсключение ¦;"),
         KeywordItem("КонецПопытки", "КонецПопытки;\n", formatAfterInsert),
-        KeywordItem("Новый", "Новый "),
+        KeywordItem("Новый", "Новый ", selectTypeAfterInsert),
         KeywordItem("Выполнить", "Выполнить(\"¦\");"),
         KeywordItem("Истина", "Истина"),
         KeywordItem("Ложь", "Ложь"),
@@ -95,14 +94,12 @@ class Keywords {
         KeywordItem("Для_По_Цикл", "Для ¦ =  По  Цикл\nКонецЦикла;"),
         null,
     };
-    Keywords()
-    {
+    Keywords() {
         // Уберем лишний пустой элемент
         keywordsEng.resize(keywordsEng.length - 1);
         keywordsRus.resize(keywordsRus.length - 1);
     }
-    void processParseResult(ParseMethodResult&& result, IntelliSite&& isite)
-    {
+    void processParseResult(ParseMethodResult&& result, IntelliSite&& isite) {
         bool allExclude = true;
         for (uint i = 0, im = keywordsEng.length - 1; i < im; i++) {
             if (result.isKeywordAllowed(lexName + 1 + i))
@@ -132,35 +129,29 @@ class KeywordItem : SmartBoxInsertableItem {
     string insertStr;
     FMakeInsert&& fInsert;
     FAfterInsert&& fAfterInsert;
-    KeywordItem(const string& name, const string& ins, FAfterInsert&& fai = null, FMakeInsert&& fi = null)
-    {
+    KeywordItem(const string& name, const string& ins, FAfterInsert&& fai = null, FMakeInsert&& fi = null) {
         super(name, imgKeyword);
         insertStr = ins;
         &&fInsert = fi;
         &&fAfterInsert = fai;
     }
-    void textForTooltip(string& text)
-    {
+    void textForTooltip(string& text) {
         text = "Вставка ключевого слова §" + d.descr;
     }
-    void textForInsert(string&out text)
-    {
+    void textForInsert(string&out text) {
         text = insertStr;
         if (fInsert !is null)
             fInsert(this, text);
     }
-    void updateInsertPosition(TextWnd& wnd, TextPosition& start, TextPosition& end, bool& notIndent)
-    {
+    void updateInsertPosition(TextWnd& wnd, TextPosition& start, TextPosition& end, bool& notIndent) {
     }
-    void afterInsert(TextWnd&& editor)
-    {
+    void afterInsert(TextWnd&& editor) {
         if (fAfterInsert !is null)
             fAfterInsert(this, editor);
     }
 };
 
-void formatAfterInsert(KeywordItem& item, TextWnd&& editor)
-{
+void formatAfterInsert(KeywordItem& item, TextWnd&& editor) {
     TextPosition caretPos;
     editor.ted.getCaretPosition(caretPos, false);
     string lineOfText = getTextLine(editor.textDoc.tm, caretPos.line);
@@ -178,7 +169,12 @@ void formatAfterInsert(KeywordItem& item, TextWnd&& editor)
     editor.ted.setCaretPosition(caretPos, false);
 }
 
-void insertForReturn(KeywordItem& item, string& text)
-{
+void insertForReturn(KeywordItem& item, string& text) {
     text += (lastParseMethodResult.isFlagSet(inProcedure) ? "" : " ¦") + ";";
+}
+
+void selectTypeAfterInsert(KeywordItem& item, TextWnd&& editor) {
+	IntelliSite&& ist = getIntelliSite();
+	addTypeStores(ist, lastParseMethodResult.allowedAccesses);
+	ist.show(editor, "");
 }

@@ -1,4 +1,4 @@
-﻿/* com_metadata.as
+/* com_metadata.as
     Работа с метаданными из аддинов.
 */
 // Данные строки нужны только для среды разработки и вырезаются препроцессором
@@ -9,8 +9,7 @@
 // Предоставляет доступ к открытым в Конфигураторе контейнерам метаданных, а также статической
 // информации, описывающей существующие виды классов и свойств метаданных 
 class IV8MetaData {
-    IV8MetaData(int)
-    {
+    IV8MetaData(int) {
         &&mdService = getMDService();
         oneMDTreeItemInfo.init();
         // сразу добавим в наш список метаданные ИБ
@@ -29,33 +28,27 @@ class IV8MetaData {
         Print("End. Objects: " + mdObjCount + " time = " + t1 + " msec");*/
     }
     //[propget, helpstring("Конфигурация ИБ")]
-    IV8MDContainer&& get_ib()
-    {
+    IV8MDContainer&& get_ib() {
         return getContainerWrapper(getIBMDCont());
     }
     //[propget, helpstring("Текущая конфигурация")]
-    IV8MDContainer&& get_current()
-    {
+    IV8MDContainer&& get_current() {
         return getContainerWrapper(editedMetaDataCont());
     }
     //[helpstring("Получить класс метаданных")]
-    IV8MDClass&& mdClass(const string& uuid)
-    {
+    IV8MDClass&& mdClass(const string& uuid) {
         return getMDClassWrapper(mdService.mdClass(Guid(uuid)));
     }
     //[helpstring("Получить описание свойства объекта метаданных")]
-    IV8MDProperty&& mdProp(const string& uuid)
-    {
+    IV8MDProperty&& mdProp(const string& uuid) {
         return getMDPropWrapper(mdService.mdProp(Guid(uuid)));
     }
     //[propget, helpstring("Количество открытых контейнеров")]
-    uint get_openedCount()
-    {
+    uint get_openedCount() {
         return contWrappers.length;
     }
     //[helpstring("Получить открытый контейнер")]
-    IV8MDContainer&& getContainer(uint idx)
-    {
+    IV8MDContainer&& getContainer(uint idx) {
         return idx < contWrappers.length ? contWrappers[idx] : null;
     }
 };
@@ -69,24 +62,20 @@ class IV8MDContainer {
     // признак закрытости контейнера. Устанавливается при обработке события закрытия конейнера.
     bool _closed = false;
     
-    IV8MDContainer(IMDContainer&& c)
-    {
+    IV8MDContainer(IMDContainer&& c) {
         &&container = c;
     }
     IMDContainer&& _container() { return container; }
-    void _setClosed()
-    {
+    void _setClosed() {
         _closed = true;
         &&container = null;
     }
 
-    IV8MDObject&& get_rootObject()
-    {
+    IV8MDObject&& get_rootObject() {
         // Контейнер сам и есть корневой объект
         return getMDObjectWrapper(container);
     }
-    array<V8TypeInfo&&>&& typeList(const string& typeCategories, int lang)
-    {
+    array<V8TypeInfo&&>&& typeList(const string& typeCategories, int lang) {
         IMDEditService&& pMDE = getMDEditService();
         IConfigMngrUI&& uicfgmngr;
         pMDE.getConfigMngrUI(uicfgmngr, container);
@@ -116,12 +105,10 @@ class IV8MDContainer {
         }
         return result;
     }
-    IV8MDContainer&& get_masterContainer()
-    {
+    IV8MDContainer&& get_masterContainer() {
         return getContainerWrapper(getMasterContainer(container));
     }
-    bool get_isModified()
-    {
+    bool get_isModified() {
         IMDEditService&& pMDE = getMDEditService();
         IConfigMngrUI&& uicfgmngr;
         pMDE.getConfigMngrUI(uicfgmngr, container);
@@ -129,8 +116,7 @@ class IV8MDContainer {
             return uicfgmngr.isModified();
         return false;
     }
-    bool get_treeVisible()
-    {
+    bool get_treeVisible() {
         IMDEditService&& pMDE = getMDEditService();
         IConfigMngrUI&& uicfgmngr;
         pMDE.getConfigMngrUI(uicfgmngr, container);
@@ -138,25 +124,21 @@ class IV8MDContainer {
             return uicfgmngr.mdTreeIsVisible();
         return false;
     }
-    void set_treeVisible(bool visible)
-    {
+    void set_treeVisible(bool visible) {
         IMDEditService&& pMDE = getMDEditService();
         IConfigMngrUI&& uicfgmngr;
         pMDE.getConfigMngrUI(uicfgmngr, container);
         if (uicfgmngr !is null)
             uicfgmngr.mdTreeShow(visible);
     }
-    IV8MDObject&& findByUUID(const string& uuid)
-    {
+    IV8MDObject&& findByUUID(const string& uuid) {
         return getMDObjectWrapper(container.objById(Guid(uuid)));
     }
-    IV8MDObject&& findByTypeUUID(const string& uuid)
-    {
+    IV8MDObject&& findByTypeUUID(const string& uuid) {
         IMDObject&& obj = container.objByTypeId(Guid(uuid));
         return getMDObjectWrapper(obj);
     }
-    string get_identifier()
-    {
+    string get_identifier() {
         IMDEditService&& pMDE = getMDEditService();
         IConfigMngrUI&& uicfgmngr;
         pMDE.getConfigMngrUI(uicfgmngr, container);
@@ -168,8 +150,10 @@ class IV8MDContainer {
 
 UintMap<IV8MDContainer&&> contFind;
 array<IV8MDContainer&&> contWrappers;
-IV8MDContainer&& getContainerWrapper(IMDContainer&& container)
-{
+IV8MDContainer&& getContainerWrapper(IMDContainer&& container) {
+    //+ mike_a
+    if(container is null)
+        return null;
     uint s = container.self;
     auto find = contFind.find(s);
     if (!find.isEnd())
@@ -192,8 +176,7 @@ class IV8MDClass {
     protected IMDClass&& mdClass;
     protected NoCaseMap<Guid> names2props;
     protected NoCaseMap<Guid> names2childs;
-    IV8MDClass(IMDClass&& c)
-    {
+    IV8MDClass(IMDClass&& c) {
         &&mdClass = c;
         IMDService&& pMDS = mdService;
         for (uint i = 0, m = mdClass.childClassesCount(); i < m; i++) {
@@ -211,8 +194,7 @@ class IV8MDClass {
             names2props.insert(stringFromAddress(pProp.ref.nameRus), propId);
         }
     }
-    bool _findPropId(Variant& v, Guid&out id)
-    {
+    bool _findPropId(Variant& v, Guid&out id) {
         if (v.vt == VT_BSTR) {
             // Передали строку
             string str = stringFromAddress(v.dword);
@@ -237,8 +219,7 @@ class IV8MDClass {
         }
         return false;
     }
-    bool _findChildId(Variant& v, Guid&out id)
-    {
+    bool _findChildId(Variant& v, Guid&out id) {
         if (v.vt == VT_BSTR) {
             // Передали строку
             string str = stringFromAddress(v.dword);
@@ -264,16 +245,13 @@ class IV8MDClass {
         return false;
     }
 
-    string get_id()
-    {
+    string get_id() {
         return mdClass.id;
     }
-    string name(int langAliase, bool pluralForm = false)
-    {
+    string name(int langAliase, bool pluralForm = false) {
         return stringFromAddress(pluralForm ? mdClass.getClassName(langAliase) : mdClass.getName(langAliase));
     }
-    string presentation(bool pluralForm = false)
-    {
+    string presentation(bool pluralForm = false) {
         v8string res;
         if (pluralForm)
             mdClass.classPresentation(res);
@@ -281,28 +259,23 @@ class IV8MDClass {
             mdClass.presentation(res);
         return res;
     }
-    uint get_propertiesCount()
-    {
+    uint get_propertiesCount() {
         return mdClass.propCount();
     }
-    IV8MDProperty&& propertyAt(uint idx)
-    {
+    IV8MDProperty&& propertyAt(uint idx) {
         return getMDPropWrapper(mdService.mdProp(mdClass.getPropIDAt(idx)));
     }
-    uint get_childsClassesCount()
-    {
+    uint get_childsClassesCount() {
         return mdClass.childClassesCount();
     }
-    IV8MDClass&& childClassAt(uint idx)
-    {
+    IV8MDClass&& childClassAt(uint idx) {
         return getMDClassWrapper(mdService.mdClass(mdClass.childClassIDAt(idx)));
     }
 };
 
 UintMap<IV8MDClass&&> mdClasses;
 
-IV8MDClass&& getMDClassWrapper(IMDClass&& mdc)
-{
+IV8MDClass&& getMDClassWrapper(IMDClass&& mdc) {
     if (mdc is null)
         return null;
     uint s = mdc.self;
@@ -317,31 +290,25 @@ IV8MDClass&& getMDClassWrapper(IMDClass&& mdc)
 class IV8MDProperty {
     protected MDPropertyRef&& mdProp;
 
-    IV8MDProperty(MDPropertyRef&& mdp)
-    {
+    IV8MDProperty(MDPropertyRef&& mdp) {
         &&mdProp = mdp;
     }
-    string get_id()
-    {
+    string get_id() {
         return mdProp.ref.id;
     }
-    string name(int langAliase)
-    {
+    string name(int langAliase) {
         return stringFromAddress(langAliase == 0 ? mdProp.ref.nameEng : mdProp.ref.nameRus);
     }
-    string get_description()
-    {
+    string get_description() {
         return load_module_wstring(mdProp.ref.resMod1, mdProp.ref.resID);
     }
-    string get_category()
-    {
+    string get_category() {
         return load_module_wstring(mdProp.ref.resMod2, mdProp.ref.resCatID);
     }
 };
 
 UintMap<IV8MDProperty&&> mdProps;
-IV8MDProperty&& getMDPropWrapper(MDPropertyRef&& mdp)
-{
+IV8MDProperty&& getMDPropWrapper(MDPropertyRef&& mdp) {
     if (mdp is null)
         return null;
     uint s = mdp.self;
@@ -356,8 +323,7 @@ IV8MDProperty&& getMDPropWrapper(MDPropertyRef&& mdp)
 // Тут я пока в раздумьях - хранить ли где-нибудь соответствие между 1Сным объектом и нашей обёрткой.
 // Ведь тогда придется как-то отслеживать их время жизни. Пока буду каждый раз создавать новую
 // обёртку, и добавлю метод isSame для сравнения на одинаковость объектов.
-IV8MDObject&& getMDObjectWrapper(IMDObject&& obj)
-{
+IV8MDObject&& getMDObjectWrapper(IMDObject&& obj) {
     return obj is null ? null : IV8MDObject(obj);
 }
 
@@ -365,31 +331,25 @@ class IV8MDObject {
     protected IMDObject&& object;
     protected IV8MDClass&& myClass;
     protected Variant pict;
-    IV8MDObject(IMDObject&& obj)
-    {
+    IV8MDObject(IMDObject&& obj) {
         &&object = obj;
     }
-    bool isSame(IV8MDObject&& other)
-    {
+    bool isSame(IV8MDObject&& other) {
         return other.object is object;
     }
-    string get_id()
-    {
+    string get_id() {
         return object.id;
     }
-    IV8MDClass&& get_mdclass()
-    {
+    IV8MDClass&& get_mdclass() {
         if (myClass is null)
             &&myClass = getMDClassWrapper(object.mdClass);
         return myClass;
     }
-    IV8MDObject&& get_parent()
-    {
+    IV8MDObject&& get_parent() {
         IMDParentLink&& p = object.mdParentLink;
         return p is null ? null : getMDObjectWrapper(p.getMDObject());
     }
-    Variant property(Variant propID)
-    {
+    Variant property(Variant propID) {
         Variant res;
         Guid propUuid;
         if (mdclass._findPropId(propID, propUuid)) {
@@ -399,8 +359,7 @@ class IV8MDObject {
         }
         return res;
     }
-    bool setProperty(Variant propID, Variant value)
-    {
+    bool setProperty(Variant propID, Variant value) {
         Guid propUuid;
         if (!mdclass._findPropId(propID, propUuid))
             return false;
@@ -410,13 +369,11 @@ class IV8MDObject {
         getMDEditService().getEditHelper(peh, object);
         return peh is null ? object.setMdPropVal(propUuid, val) : peh.changeProperty(propUuid, val);
     }
-    uint childObjectsCount(Variant childClassID)
-    {
+    uint childObjectsCount(Variant childClassID) {
         Guid childUuid;
         return mdclass._findChildId(childClassID, childUuid) ? object.childCount(childUuid) : 0;
     }
-    IV8MDObject&& childObject(Variant childClassID, Variant idx)
-    {
+    IV8MDObject&& childObject(Variant childClassID, Variant idx) {
         Guid childUuid;
         if (!mdclass._findChildId(childClassID, childUuid))
             return null;
@@ -453,8 +410,7 @@ class IV8MDObject {
         }
         return getMDObjectWrapper(founded);
     }
-    IV8MDContainer&& get_container()
-    {
+    IV8MDContainer&& get_container() {
         IConfigMngrUI&& mngui;
         getMDEditService().getConfigMngrUI(mngui, object);
         if (mngui !is null)
@@ -467,8 +423,7 @@ class IV8MDObject {
         }
         return getContainerWrapper(cast<IMDContainer>(obj));
     }
-    void activateInTree()
-    {
+    void activateInTree() {
         IConfigMngrUI&& mngui;
         getMDEditService().getConfigMngrUI(mngui, object);
         if (mngui !is null)
@@ -484,19 +439,16 @@ class IV8MDObject {
                 peh.editProperty(propUuid);
         }
     }
-    void openEditor()
-    {
+    void openEditor() {
         IMDEditHelper&& peh;
         getMDEditService().getEditHelper(peh, object);
         if (peh !is null)
             peh.openEditor();
     }
-    string get_name()
-    {
+    string get_name() {
         return mdObjName(object);
     }
-    array<string>&& types()
-    {
+    array<string>&& types() {
         array<string> result;
         IMDTypedObj&& to = object.unk;
         if (to !is null) {
@@ -509,8 +461,7 @@ class IV8MDObject {
         }
         return result;
     }
-    string synonym(const string& langCode)
-    {
+    string synonym(const string& langCode) {
         v8string n;
         IMDBaseObj&& bo = object.unk;
         if (bo is null) {
@@ -523,8 +474,7 @@ class IV8MDObject {
             n = bo.getSynonym(langCode);
         return n;
     }
-    string get_comment()
-    {
+    string get_comment() {
         v8string n;
         IMDBaseObj&& bo = object.unk;
         if (bo is null) {
@@ -535,8 +485,7 @@ class IV8MDObject {
             n = bo.getDescr();
         return n;
     }
-    bool isPropModule(Variant propIdx)
-    {
+    bool isPropModule(Variant propIdx) {
         Guid propUuid;
         if (mdclass._findPropId(propIdx, propUuid)) {
             IMDEditHelper&& peh;
@@ -554,8 +503,7 @@ class IV8MDObject {
         }
         return false;
     }
-    string getModuleText(Variant propIdx)
-    {
+    string getModuleText(Variant propIdx) {
         v8string res;
         Guid propUuid;
         if (mdclass._findPropId(propIdx, propUuid)) {
@@ -574,12 +522,12 @@ class IV8MDObject {
         }
         return res;
     }
-    void setModuleText(Variant propIdx, const string& text)
-    {
+    void setModuleText(Variant propIdx, const string& text) {
     }
-    ITextWindow&& openModule(Variant propIdx)
-    {
+    ITextWindow&& openModule(Variant propIdx) {
         Guid propUuid;
+                            Value val123;
+                            v8string n123;
         if (mdclass._findPropId(propIdx, propUuid)) {
             IMDEditHelper&& peh;
             getMDEditService().getEditHelper(peh, object);
@@ -589,25 +537,40 @@ class IV8MDObject {
                     Vector v;
                     emh.hasModule(propUuid, v);
                     if (v.end > v.start) {
-                        ITextEditor&& textEditor;
-                        ITextManager&& textMan;
-                        emh.openModule(textMan, propUuid, true, true, textEditor);
-                        if (textEditor !is null) {
-                            TextDoc&& tdoc = textDocStorage.find(textMan);
-                            if (tdoc !is null) {
-                                TextWnd&& wnd = tdoc.findWnd(textEditor);
-                                if (wnd !is null)
-                                    return wnd.getComWrapper();
+                        // Артур в 8.3.10 и 8.3.9 метод IMDEditModuleHelper.openModule не работает, поэтому использую хак выше!
+                        #if ver >= 8.3.9
+                            var2val(propIdx, val123);
+                            val123.getString(n123);
+                            if (n123 == "Форма"){
+                                Value val124("Модуль");
+                                Variant var;
+                                val2var(val124, var);
+                                editProperty(var);
                             }
-                        }
+                            else
+                                editProperty(propIdx);
+                            
+                            return oneDesigner._snegopat.activeTextWindow();
+                        #else
+                            ITextEditor&& textEditor;
+                            ITextManager&& textMan;
+                            emh.openModule(textMan, propUuid, true, true, textEditor);
+                            if (textEditor !is null) {
+                                TextDoc&& tdoc = textDocStorage.find(textMan);
+                                if (tdoc !is null) {
+                                    TextWnd&& wnd = tdoc.findWnd(textEditor);
+                                    if (wnd !is null)
+                                        return wnd.getComWrapper();
+                                }
+                            }
+                        #endif 
                     }
                 }
             }
         }
         return null;
     }
-    string extPropUUID(Variant propIdx)
-    {
+    string extPropUUID(Variant propIdx) {
         Guid propUuid;
         if (mdclass._findPropId(propIdx, propUuid)) {
             IMDEditHelper&& peh;
@@ -617,8 +580,7 @@ class IV8MDObject {
         }
         return string();
     }
-    IV8ExtProp&& getExtProp(Variant propIdx)
-    {
+    IV8ExtProp&& getExtProp(Variant propIdx) {
         Guid propUuid;
         if (mdclass._findPropId(propIdx, propUuid)) {
             IMDEditHelper&& peh;
@@ -643,16 +605,13 @@ class IV8MDObject {
         }
         return null;
     }
-    IV8DataFile&& saveToFile(IV8DataFile&& fileIn = null)
-    {
+    IV8DataFile&& saveToFile(IV8DataFile&& fileIn = null) {
         return saveObject(fileIn, object);
     }
-    bool loadFromFile(IV8DataFile&& file)
-    {
+    bool loadFromFile(IV8DataFile&& file) {
         return loadObject(file, object);
     }
-    Variant get_picture()
-    {
+    Variant get_picture() {
         if (pict.vt == VT_EMPTY) {
             IMDEditHelper&& peh;
             getMDEditService().getEditHelper(peh, object);
@@ -663,16 +622,14 @@ class IV8MDObject {
         }
         return pict;
     }
-    IObjectProperties&& get_props()
-    {
+    IObjectProperties&& get_props() {
         return null;
     }
 };
 MDTreeItemInfo oneMDTreeItemInfo;
 
 class IV8ExtProp {
-    IV8ExtProp(const Guid& did, const Guid& eid)
-    {
+    IV8ExtProp(const Guid& did, const Guid& eid) {
         dataID = did;
         editorID = eid;
     }
@@ -681,28 +638,23 @@ class IV8ExtProp {
     string _url;
     string get_idData() { return dataID; }
     string get_idEditor() { return editorID; }
-    string get_title()
-    {
+    string get_title() {
         IDocument&& doc = object.unk;
         if (doc !is null)
             return doc.getTitle().str;
         return string();
     }
-    bool get_isReadOnly()
-    {
+    bool get_isReadOnly() {
         IDocument&& doc = object.unk;
         return doc is null ? true : doc.getReadOnly();
     }
-    IV8DataFile&& saveToFile(IV8DataFile&& file = null)
-    {
+    IV8DataFile&& saveToFile(IV8DataFile&& file = null) {
         return saveObject(file, object);
     }
-    bool loadFromFile(IV8DataFile&& file)
-    {
+    bool loadFromFile(IV8DataFile&& file) {
         return loadObject(file, object);
     }
-    Variant getForm()
-    {
+    Variant getForm() {
         Variant result;
         Value val;
         ICustomFormDesigner&& dsn = object.unk;
@@ -719,8 +671,7 @@ class IV8ExtProp {
     }
 };
 
-IV8DataFile&& saveObject(IV8DataFile&& file, IUnknown&& obj)
-{
+IV8DataFile&& saveObject(IV8DataFile&& file, IUnknown&& obj) {
     if (file is null) {
         IFileEx&& f;
         currentProcess().createByClsid(CLSID_MemoryFile, IID_IFileEx, f);
@@ -751,8 +702,7 @@ IV8DataFile&& saveObject(IV8DataFile&& file, IUnknown&& obj)
     return file;
 }
 
-bool loadObject(IV8DataFile&& file, IUnknown&& obj)
-{
+bool loadObject(IV8DataFile&& file, IUnknown&& obj) {
     if (file is null || file.file is null) {
         setComException("Нет файла для загрузки");
         return false;
@@ -781,33 +731,49 @@ bool loadObject(IV8DataFile&& file, IUnknown&& obj)
     return true;
 }
 
-class IObjectProperties {};
+class IObjectProperties {
+    int get_count() {
+        return 0;
+    }
+    string propName(int idx) {
+        return "";
+    }
+    Variant getValue(Variant idx) {
+        return Variant();
+    }
+    void setValue(Variant idx, Variant val) {
+    }
+    void activateProperty(Variant idx) {
+    }
+};
 
-IMDContainer&& getIBMDCont()
-{
-    return getDefaultInfoBase().getConfigMgr().getMDCont();
-    /*
+IMDContainer&& getIBMDCont() {
+    //return getDefaultInfoBase().getConfigMgr().getMDCont();
+    
     IInfoBaseService&& ibs = currentProcess().getService(IID_IInfoBaseService);
     dumpVtable(&&ibs);
     IInfoBase&& ib = getDefaultInfoBase();
     dumpVtable(&&ib);
     IConfigMngr&& mng = ib.getConfigMgr();
+    
+    //+ mike_a
+    if(mng is null)
+        return null;
+    
     dumpVtable(&&mng);
     IMDContainer&& mdcont = mng.getMDCont();
     dumpVtable(&&mdcont);
     return mdcont;
-    */
+    
 }
 
-IMDContainer&& editedMetaDataCont()
-{
+IMDContainer&& editedMetaDataCont() {
     IConfigMngrUI&& pmdUI;
     getMDEditService().getTemplatesMainConfigMngrUI(pmdUI);
     return pmdUI.getMDCont();
 }
 
-string mdObjName(IMDObject&& object)
-{
+string mdObjName(IMDObject&& object) {
     v8string n;
     IMDBaseObj&& bo = object.unk;
     if (bo is null) {
@@ -820,8 +786,7 @@ string mdObjName(IMDObject&& object)
     return n;
 }
 
-string mdObjFullName(IMDObject&& object)
-{
+string mdObjFullName(IMDObject&& object) {
     if (object is null)
         return "no_object";
     array<string> names;
@@ -841,18 +806,15 @@ string mdObjFullName(IMDObject&& object)
     return join(names, ".");
 }
 
-string mdPropName(const Guid& mdPropID)
-{
+string mdPropName(const Guid& mdPropID) {
     return stringFromAddress(mdService.mdProp(mdPropID).ref.nameRus);
 }
 
 TrapVirtualStdCall trOpenConfig;
-void setTrapOnOpenConfig()
-{
+void setTrapOnOpenConfig() {
     trOpenConfig.setTrap(getMDEditService(), IMDEditService_openConfig, trapOpenConfig);
 }
-void trapOpenConfig(IMDEditService& pService, IConfigMngrUI& mngr, IMDContainer& container)
-{
+void trapOpenConfig(IMDEditService& pService, IConfigMngrUI& mngr, IMDContainer& container) {
     // Перехват на открытие контейнера метаданных. Помимо конфигурации ИБ и рабочей базы
     // это также все открываемые cf, epf, erf файлы, так как они содержат свои контейнеры
     // метаданных.
@@ -868,19 +830,19 @@ void trapOpenConfig(IMDEditService& pService, IConfigMngrUI& mngr, IMDContainer&
 enum MetaDataEvents {
     //[helpstring("Добавление")]
     mdeAdd = 0,
-    //[helpstring("Изменение свойства")]	
+    //[helpstring("Изменение свойства")]    
     mdeChangeProp,
-    //[helpstring("Удаление")]			
+    //[helpstring("Удаление")]          
     mdeDelete,
-    //[helpstring("Изменение объекта")]	
+    //[helpstring("Изменение объекта")] 
     mdeChange,
-    //[helpstring("Перед сохранением")]	
+    //[helpstring("Перед сохранением")] 
     mdeSave,
-    //[helpstring("Закрытие UI")]			
+    //[helpstring("Закрытие UI")]           
     mdeClose,
-    //[helpstring("После сохранения")]	
+    //[helpstring("После сохранения")]  
     mdeAfterSave,
-    //[helpstring("Открытие UI")]			
+    //[helpstring("Открытие UI")]           
     mdeOpen,
 };
 
@@ -895,8 +857,7 @@ class IV8MetaDataEvent {
 }
 
 class MetaDataEvent {
-    void onEvent(const Guid&in eventID, MDEventInfo& info, IUnknown& obj)
-    {
+    void onEvent(const Guid&in eventID, MDEventInfo& info, IUnknown& obj) {
         //Print("Metadata event " + int(info.kind));
         // Обработка событий метаданных.
         // Надо послать оповещение подписчикам
@@ -941,8 +902,7 @@ class MetaDataEvent {
 
 NoCaseMap<Variant> pictCache;
 
-Variant image2pict(IUnknown&& img)
-{
+Variant image2pict(IUnknown&& img) {
     Variant res;
     IImage&& image = img;
     if (image is null)
@@ -983,9 +943,8 @@ Variant image2pict(IUnknown&& img)
     return res;
 }
 
-IMDContainer&& getMasterContainer(IMDContainer&& cont)
-{
-	dumpVtable(&&cont);
+IMDContainer&& getMasterContainer(IMDContainer&& cont) {
+    //dumpVtable(&&cont);
     for (IMDContainer&& master = cont.masterContainer(); master !is null; &&master = cont.masterContainer())
         &&cont = master;
     return cont;
@@ -993,8 +952,7 @@ IMDContainer&& getMasterContainer(IMDContainer&& cont)
 
 // Тестовая процедура обхода дерева метаданных
 uint mdObjCount = 0;
-void walkMD(IV8MDObject&& obj)
-{
+void walkMD(IV8MDObject&& obj) {
     mdObjCount++;
     string test = obj.name;
     //Message(obj.name);

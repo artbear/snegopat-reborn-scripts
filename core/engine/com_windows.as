@@ -10,8 +10,7 @@ IDispatch&& dspWindows;
 
 // Реализация объекта windows. Пока частичная.
 class IV8Windows {
-    IV8Windows()
-    {
+    IV8Windows() {
         &&dspWindows = createDispatchFromAS(&&this);
         // Инициализируем перехваты
         setTrapOnChangeTitle();
@@ -20,24 +19,20 @@ class IV8Windows {
         idleHandlers.insertLast(clearViewMap);
     }
     // Основное окно
-    IV8View&& get_mainView()
-    {
+    IV8View&& get_mainView() {
         return mdiView.parent;
     }
     // Контейнер MDI-окон
-    IV8View&& get_mdiView()
-    {
+    IV8View&& get_mdiView() {
         return getViewWrapper(gMDIClientID);
     }
     // Текущий модальный режим
-    ModalStates get_modalMode()
-    {
+    ModalStates get_modalMode() {
         //dumpVtable(getBkEndUI());
         return getBkEndUI().currentModalState();
     }
     // Заголовок основного окна
-    string get_caption()
-    {
+    string get_caption() {
         if (mainFrame !is null) {
             IWindow&& w = mainFrame.unk;
             if (w !is null) {
@@ -50,8 +45,7 @@ class IV8Windows {
         }
         return string();
     }
-    void set_caption(const string& str)
-    {
+    void set_caption(const string& str) {
         if (mainFrame !is null) {
             IWindow&& wnd = mainFrame.unk;
             if (wnd !is null)
@@ -59,57 +53,48 @@ class IV8Windows {
         }
     }
     // Основная часть заголовка
-    string get_mainTitle()
-    {
+    string get_mainTitle() {
         string res;
         if (mainFrame !is null)
             res = mainFrame.getTitle();
         return res;
     }
-    void set_mainTitle(const string& str)
-    {
+    void set_mainTitle(const string& str) {
         if (mainFrame !is null)
             mainFrame.setTitle(str);
     }
     // Дополнительная часть заголовка
-    string get_additionalTitle()
-    {
+    string get_additionalTitle() {
         string res;
         if (mainFrame !is null)
             res = mainFrame.getAdditionalTitle();
         return res;
     }
-    void set_additionalTitle(const string& str)
-    {
+    void set_additionalTitle(const string& str) {
         if (mainFrame !is null)
             mainFrame.setAdditionalTitle(str);
     }
     // Видимость окна свойств
-    bool get_propsVisible()
-    {
+    bool get_propsVisible() {
         IPropertyService&& props = currentProcess().getService(IID_IPropertyService);
         return props.isPropWndVisible();
     }
-    void set_propsVisible(bool bVisible)
-    {
+    void set_propsVisible(bool bVisible) {
         IPropertyService&& props = currentProcess().getService(IID_IPropertyService);
         props.showPropWnd(bVisible);
     }
     //Активное отображение
-    IV8View&& getActiveView()
-    {
+    IV8View&& getActiveView() {
         return frameView(ActiveViewInCoreFrame);
     }
     // Отображение в фокусе
-    IV8View&& getFocusedView()
-    {
+    IV8View&& getFocusedView() {
         return frameView(FocusedViewInCoreFrame);
     }
     // Данный метод позволяет получить текущий текст из поля ввода на форме,
     // не дожидаясь перехода фокуса из поля.
     // На вход надо подать ЭУ (Форма.ЭлементыФормы.ИмяКонтрола)
-    string getInputFieldText(const Variant& ctrl)
-    {
+    string getInputFieldText(const Variant& ctrl) {
         v8string res;
         Value val;
         var2val(ctrl, val);
@@ -131,8 +116,7 @@ class IV8Windows {
     }
 };
 
-IV8View&& frameView(uint offset)
-{
+IV8View&& frameView(uint offset) {
     ITopLevelFrameCore&& tlc = coreMainFrame.unk;
     int addrOfViewCont = mem::dword[tlc.self + offset];
     if (addrOfViewCont > 0) {
@@ -154,8 +138,7 @@ enum ViewContainerType {
 
 
 NoCaseMap<IV8View&&> viewWrappers;
-IV8View&& getViewWrapper(const Guid& id)
-{
+IV8View&& getViewWrapper(const Guid& id) {
     string strId = id;
     auto find = viewWrappers.find(strId);
     if (!find.isEnd())
@@ -165,8 +148,7 @@ IV8View&& getViewWrapper(const Guid& id)
     return v;
 }
 
-void clearViewMap()
-{
+void clearViewMap() {
     array<string> removed;
     for (auto it = viewWrappers.begin(); it++;) {
         if (!it.value.isAlive())
@@ -176,34 +158,35 @@ void clearViewMap()
         viewWrappers.remove(removed[i]);
 }
 
-IMDObject&& getMdObjFromView(IFramedView&& view)
-{
+IMDObject&& getMdObjFromView(IFramedView&& view) {
     IDocumentView&& dv = view.unk;
     if (dv !is null) {
         IDocument&& doc;
         dv.document(doc);
-        IConfigMngrUI&& ui = doc.unk;
-        if (ui is null) {
-            IConfigMngrUIOwner&& ow = doc.unk;
-            if (ow !is null)
-                &&ui = ow.getUI();
-        }
-        if (ui !is null)
-            return ui.getMDCont();
-        else {
-            if (doc.getConfigMode()) {
-                IConnectionPointContainer&& pCont = doc.unk;
-                if (pCont !is null) {
-                    IUnknown&& pCP;
-                    if (0 == pCont.FindConnectionPoint(IID_IDocumentSink, pCP) && pCP !is null) {
-                        uint pdata = mem::dword[pCP.self + 4];
-                        uint size = mem::dword[pCP.self + 8];
-                        for (uint i = 0; i < size; i++) {
-                            DocSinkRef&& pSink = toDocSink(mem::dword[pdata + i * 4]);
-                            if (pSink !is null && pSink.ref.refCount < 10) {
-                                IMDEditHelper&& eh = pSink.ref.editHelper;
-                                if (eh !is null)
-                                    return eh.getMDObj();
+        if (doc !is null) {
+            IConfigMngrUI&& ui = doc.unk;
+            if (ui is null) {
+                IConfigMngrUIOwner&& ow = doc.unk;
+                if (ow !is null)
+                    &&ui = ow.getUI();
+            }
+            if (ui !is null)
+                return ui.getMDCont();
+            else {
+                if (doc.getConfigMode()) {
+                    IConnectionPointContainer&& pCont = doc.unk;
+                    if (pCont !is null) {
+                        IUnknown&& pCP;
+                        if (0 == pCont.FindConnectionPoint(IID_IDocumentSink, pCP) && pCP !is null) {
+                            uint pdata = mem::dword[pCP.self + 4];
+                            uint size = mem::dword[pCP.self + 8];
+                            for (uint i = 0; i < size; i++) {
+                                DocSinkRef&& pSink = toDocSink(mem::dword[pdata + i * 4]);
+                                if (pSink !is null && pSink.ref.refCount < 10) {
+                                    IMDEditHelper&& eh = pSink.ref.editHelper;
+                                    if (eh !is null)
+                                        return eh.getMDObj();
+                                }
                             }
                         }
                     }
@@ -224,8 +207,7 @@ IMDObject&& getMdObjFromView(IFramedView&& view)
 }
 
 
-Guid getMdPropIDFromView(IFramedView&& view)
-{
+Guid getMdPropIDFromView(IFramedView&& view) {
     IDocumentView&& dv = view.unk;
     if (dv !is null) {
         IDocument&& doc;
@@ -255,33 +237,27 @@ Guid getMdPropIDFromView(IFramedView&& view)
 // Реализация объекта представления окна.
 class IV8View {
     Guid __id;
-    IV8View(const Guid& i)
-    {
+    IV8View(const Guid& i) {
         __id = i;
     }
-    IFramedView&& _getView(bool throwComError = true)
-    {
+    IFramedView&& _getView(bool throwComError = true) {
         IFramedView&& view;
         mainFrame.getView(view, __id);
         if (view is null && throwComError)
             setComException("Отображение уже не существует");
         return view;
     }
-    bool isAlive()
-    {
+    bool isAlive() {
         return _getView(false) !is null;
     }
-    string get_id()
-    {
+    string get_id() {
         return __id;
     }
-    string get_title()
-    {
+    string get_title() {
         IFramedView&& v = _getView();
         return v is null ? string() : v.title().str;
     }
-    uint get_hwnd()
-    {
+    uint get_hwnd() {
         IFramedView&& v = _getView();
         if (v !is null) {
             IWindowView&& wv = v.unk;
@@ -293,8 +269,7 @@ class IV8View {
         }
         return 0;
     }
-    IV8ViewPosition&& position()
-    {
+    IV8ViewPosition&& position() {
         IFramedView&& v = _getView();
         if (v is null)
             return null;
@@ -308,8 +283,7 @@ class IV8View {
         site.getViewPosition(vp.vp);
         return vp;
     }
-    IV8View&& get_parent()
-    {
+    IV8View&& get_parent() {
         IFramedView&& v = _getView();
         if (v !is null) {
             Guid pid;
@@ -318,8 +292,7 @@ class IV8View {
         }
         return null;
     }
-    array<IV8View&&>&& enumChilds()
-    {
+    array<IV8View&&>&& enumChilds() {
         IFramedView&& v = _getView();
         if (v is null)
             return null;
@@ -392,8 +365,7 @@ class IV8View {
         }
         return result;
     }
-    void merge(IV8View&& other, ViewPlacements place)
-    {
+    void merge(IV8View&& other, ViewPlacements place) {
         IFramedView&& v = _getView();
         if (v is null)
             return;
@@ -407,8 +379,7 @@ class IV8View {
                 site.split(vo, place, true, -1);
         }
     }
-    ViewContainerType get_isContainer()
-    {
+    ViewContainerType get_isContainer() {
         IFramedView&& view = _getView();
         if (view !is null) {
             IViewLayouter&& vl = view.unk;
@@ -432,24 +403,20 @@ class IV8View {
         }
         return vctNo;
     }
-    string get_wndClass()
-    {
+    string get_wndClass() {
         string result;
         uint hWnd = get_hwnd();
         if (hWnd > 0)
             result.setLength(GetClassName(hWnd, result.setLength(300), 300));
         return result;
     }
-    bool get_visible()
-    {
+    bool get_visible() {
         return mainFrame.isViewVisible(__id);
     }
-    void set_visible(bool vis)
-    {
+    void set_visible(bool vis) {
         mainFrame.showView(__id, vis);
     }
-    IV8View&& get_activeChild()
-    {
+    IV8View&& get_activeChild() {
         IFramedView&& view = _getView();
         if (view is null)
             return null;
@@ -480,16 +447,13 @@ class IV8View {
         }
         return null;
     }
-    void activate()
-    {
+    void activate() {
         mainFrame.activateView(__id);
     }
-    void close(bool forceClose = false)
-    {
+    void close(bool forceClose = false) {
         mainFrame.closeView(__id, forceClose);
     }
-    ICmdUpdateResult&& getCmdState(string cmdGroupUUID, uint cmdNumber, int subCommandIdx = -1)
-    {
+    ICmdUpdateResult&& getCmdState(string cmdGroupUUID, uint cmdNumber, int subCommandIdx = -1) {
         IFramedView&& view = _getView();
         if (view !is null) {
             ICommandReceiver&& recv = view.unk;
@@ -498,8 +462,7 @@ class IV8View {
         }
         return null;
     }
-    bool sendCommand(string cmdGroupUUID, uint cmdNumber, int subCommandIdx = 0)
-    {
+    bool sendCommand(string cmdGroupUUID, uint cmdNumber, int subCommandIdx = 0) {
         IFramedView&& view = _getView();
         if (view !is null) {
             ICommandReceiver&& recv = view.unk;
@@ -507,8 +470,7 @@ class IV8View {
         }
         return false;
     }
-    IViewDocument&& getDocument()
-    {
+    IViewDocument&& getDocument() {
         IFramedView&& view = _getView();
         if (view !is null) {
             IDocumentView&& w = view.unk;
@@ -520,8 +482,7 @@ class IV8View {
         }
         return null;
     }
-    Variant getObject()
-    {
+    Variant getObject() {
         Variant res;
         IFramedView&& view = _getView();
         if (view !is null) {
@@ -539,13 +500,17 @@ class IV8View {
         }
         return res;
     }
-    IV8Form&& getInternalForm()
-    {
-        return null;
+    IV8Form&& getInternalForm() {
+		IFramedView&& view = _getView();
+		if (view !is null) {
+			IForm&& form = view.unk;
+			if (form !is null)
+				return IV8Form(form);
+		}
+		return null;
     }
     protected Variant pict;
-    Variant get_icon()
-    {
+    Variant get_icon() {
         IFramedView&& view = _getView();
         if (view !is null) {
             if (pict.vt == VT_EMPTY) {
@@ -557,8 +522,8 @@ class IV8View {
         return pict;
     }
     protected IV8MDObject&& myMdObj;
-    IV8MDObject&& get_mdObj()
-    {
+    IV8MDObject&& get_mdObj() {
+// debugger();//Артур
         IFramedView&& view = _getView();
         if (view is null)
             return null;
@@ -567,8 +532,7 @@ class IV8View {
         return myMdObj;
     }
     protected IV8MDProperty&& myMdProp;
-    IV8MDProperty&& get_mdProp()
-    {
+    IV8MDProperty&& get_mdProp() {
         IFramedView&& view = _getView();
         if (view is null)
             return null;
@@ -578,13 +542,11 @@ class IV8View {
     }
 };
 
-ViewContextRef&& getViewContext(IViewContext&& ctx)
-{
+ViewContextRef&& getViewContext(IViewContext&& ctx) {
     return toViewContext(ctx.self + ViewContextOffset);
 }
 
-bool getViewParentID(IFramedView&& view, Guid& pid)
-{
+bool getViewParentID(IFramedView&& view, Guid& pid) {
     IFramedView&& parent = frameViewParent(view);
     if (parent !is null) {
         parent.getID(pid);
@@ -593,8 +555,7 @@ bool getViewParentID(IFramedView&& view, Guid& pid)
     return false;
 }
 
-IFramedView&& frameViewParent(IFramedView&& view)
-{
+IFramedView&& frameViewParent(IFramedView&& view) {
     IContainedObject&& co = view.unk;
     if (co !is null) {
         IViewContext&& ctx = cast<IUnknown>(co.getSite());
@@ -610,26 +571,20 @@ class IV8ViewPosition {
     ViewPosition vp;
 }
 
-IViewDocument&& getDocWrapper(IDocument&& d)
-{
+IViewDocument&& getDocWrapper(IDocument&& d) {
     return IViewDocument(d);
 }
 
 class IViewDocument {
     protected IDocument&& doc;
-    IViewDocument(IDocument&& d)
-    {
+    IViewDocument(IDocument&& d) {
         &&doc = d;
     }
 };
 
-class IV8Form {
-
-};
 ////////////////////////////////////////////////////////////////////////////////
 // Перехват и оповещение о смене заголовка основного окна
-void setTrapOnChangeTitle()
-{
+void setTrapOnChangeTitle() {
     trMainFrame_setTitle.setTrap(coreMainFrame, ITopLevelFrame_setTitle, MainFrame_setTitle);
     trMainFrame_setAddTitle.setTrap(coreMainFrame, ITopLevelFrame_setAdditionalTitle, MainFrame_setAdditionalTitle);
 }
@@ -637,8 +592,7 @@ TrapVirtualStdCall trMainFrame_setTitle;
 TrapVirtualStdCall trMainFrame_setAddTitle;
 funcdef void MainFrame_st(ITopLevelFrame&, const v8string&in);
 
-void MainFrame_setTitle(ITopLevelFrame&frame, const v8string&in str)
-{
+void MainFrame_setTitle(ITopLevelFrame&frame, const v8string&in str) {
     if (!fireFrameTitleChanged(str, frame.getAdditionalTitle())) {
         MainFrame_st&& original;
         trMainFrame_setTitle.getOriginal(&&original);
@@ -646,8 +600,7 @@ void MainFrame_setTitle(ITopLevelFrame&frame, const v8string&in str)
     }
 }
 
-void MainFrame_setAdditionalTitle(ITopLevelFrame&frame, const v8string&in str)
-{
+void MainFrame_setAdditionalTitle(ITopLevelFrame&frame, const v8string&in str) {
     if (!fireFrameTitleChanged(frame.getTitle(), str)) {
         MainFrame_st&& original;
         trMainFrame_setAddTitle.getOriginal(&&original);
@@ -656,8 +609,7 @@ void MainFrame_setAdditionalTitle(ITopLevelFrame&frame, const v8string&in str)
 }
 
 // Оповещение о событии изменения заголовка основного окна.
-bool fireFrameTitleChanged(const string&in mainTitle, const string&in additionalTitle)
-{
+bool fireFrameTitleChanged(const string&in mainTitle, const string&in additionalTitle) {
     ISetMainTitleHook param;
     param._mainTitle = mainTitle;
     param._additionalTitle = additionalTitle;
@@ -682,8 +634,7 @@ class ISetMainTitleHook {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // Перехват и оповещение о предупреждении
 TrapVirtualStdCall trMsgBox;
-void setTrapOnMsgBox()
-{
+void setTrapOnMsgBox() {
     trMsgBox.setTrap(getBkEndUI(), IBkEndUI_messageBox, msgBoxTrap);
 }
 
@@ -692,8 +643,7 @@ int msgBoxTrap(IBkEndUI& pUI, const v8string& text, uint type, uint timeout, uin
 #if ver >= 8.3
                , int i4, int i5
 #endif
-               )
-{
+               ) {
     // Для начала снимем перехват. Тогда обработчики события смогут также вызывать MsgBox без зацикливания
     trMsgBox.swap();
     if (oneDesigner._events._hasHandlers(dspWindows, "onMessageBox")) {
@@ -741,15 +691,13 @@ class IMsgBoxHook {
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Перехват и оповещение о Сообщить
-void setTrapOnMessage()
-{
+void setTrapOnMessage() {
     trMessage.setTrap(getBkEndUI(), IBkEndUI_doMsgLine, doMsgLineTrap);
 }
 
 TrapVirtualStdCall trMessage;
 
-int doMsgLineTrap(IBkEndUI& pUI, const v8string&in text, MessageMarker marker, const Guid&in g, int i1, IUnknown& pUnkObject, const V8Picture&in customMarker)
-{
+int doMsgLineTrap(IBkEndUI& pUI, const v8string&in text, MessageMarker marker, const Guid&in g, int i1, IUnknown& pUnkObject, const V8Picture&in customMarker) {
     // Для начала снимем перехват. Тогда обработчики события смогут также вызывать Message без зацикливания
     trMessage.swap();
     if (oneDesigner._events._hasHandlers(dspWindows, "onMessage")) {

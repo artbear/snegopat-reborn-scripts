@@ -46,8 +46,10 @@
 		27
 	  #elif ver < 8.3.6
 		28
-	  #else
+	  #elif ver < 8.3.9
 		26
+	  #else
+	    27
 	  #endif
 		IMDContainer@+ getMDCont()
 		+1
@@ -108,8 +110,14 @@
 		+2
 	  #elif ver <8.3.7.1759
 	    +6
-	  #else
+		// Артур
+	  // #else
+	  //   +7
+	  #elif ver <8.3.10
 	    +7
+	  #else
+	    +8
+		// завершение
 	  #endif
 		IMDObject@+ objById(const Guid& objId)
 		+4
@@ -141,6 +149,9 @@
 	  #if ver >= 8.3
 		+2
 	  #endif
+	  #if ver>=8.3.8
+	    +1
+	  #endif
 		uint childClassesCount()
 		save const Guid& childClassIDAt(uint index)
 
@@ -148,8 +159,12 @@
 	:virt
 	  #if ver <8.3.3.641
 		35
-	  #else 
+	  #elif ver < 8.3.9
 		38
+	  #elif ver < 8.3.10
+		82
+	  #else
+	    83
 	  #endif
 		IMDContainer@+ getMDCont(int i = 0)
 
@@ -159,7 +174,7 @@
 
 :iface IInfoBase {D1344594-BE0C-4135-BF15-753C1C75D554}
 	:virt
-	  #if ver=8.3.6.1945
+	  #if ver>=8.3.7 | ver=8.3.6.1945
 		+2
 	  #endif
 		v8string connectString()
@@ -174,8 +189,10 @@
 		61
 	  #elif ver < 8.3.7
 		59
-	  #else
+	  #elif ver < 8.3.9
 	    53
+	  #else
+	    54
 	  #endif
 		IConfigMngr@+ getConfigMgr()
 
@@ -183,9 +200,6 @@
 	:virt
 	  #if ver < 8.3.5
 	    8
-	  #else
-	    22
-	  #endif
 		void getTreeItemInfo(const Guid& id, MDTreeItemInfo& info, int k = 0)
 		IMDObject@+ getMDObj()
 		+4
@@ -193,25 +207,49 @@
 		+4
 		bool changeProperty(const Guid& propId, const Value& value)
 	    void editProperty(const Guid& propUuid)
-	  #if ver < 8.3.5
 		+3
-	  #else
-		13
-	  #endif
 		uint extPropEditor(IUnknown@&, const Guid& propUuid)
 		const Guid& extPropEditorCLSID(const Guid& propUuid)
 		uint extProp(IUnknown@&, const Guid& propUuid, bool noCached = false)
 		const Guid& extPropCLSID(const Guid& propUuid)
+	  #else
+		13
+		uint extPropEditor(IUnknown@&, const Guid& propUuid)
+		const Guid& extPropEditorCLSID(const Guid& propUuid)
+		uint extProp(IUnknown@&, const Guid& propUuid, bool noCached = false)
+		const Guid& extPropCLSID(const Guid& propUuid)
+	    22
+		void getTreeItemInfo(const Guid& id, MDTreeItemInfo& info, int k = 0)
+		IMDObject@+ getMDObj()
+		+4
+	    void openEditor()
+	  #if ver < 8.3.10
+		+4
+	  #else
+		+6
+	  #endif
+
+		bool changeProperty(const Guid& propId, const Value& value)
+	    void editProperty(const Guid& propUuid)
+	  #endif
 
 :iface IMDBaseObj {D3624077-1010-45F0-A596-77ADD399D777}
 	:base IMDObject
 	:virt
-	  #if ver >= 8.3.6
-	    +4
+		// Артур
+	  #if ver >= 8.3.10
+	    44
+		#else
+		//завершение
+			#if ver >= 8.3.6
+				+4
+			#endif
+			#if ver >= 8.3.7.1759
+				+1
+			#endif
+		// Артур
 	  #endif
-	  #if ver >= 8.3.7.1759
-	    +1
-	  #endif
+		// завершение
 		const v8string& getName()
 		v8string getSynonym(const v8string&in lc)
 		+1
@@ -231,6 +269,9 @@
 		+2
 		const Guid& moduleExpandType(const Guid& propId)
 		+1
+		// //Артур
+		// +1
+		// // +10 Артур завершение
 		uint openModule(ITextManager@&, const Guid& propId, bool s, bool open, ITextEditor@& editor)
 
 :iface IMDTypedObj {752BB41D-05DA-4FD1-A680-78DFB6C6EB1C}

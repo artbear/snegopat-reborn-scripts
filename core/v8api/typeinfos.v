@@ -200,8 +200,10 @@
 #endif
 #if ver < 8.3
 	save uint getDataSource(IV8DataSource@&, ITextEditor& ted, IV8Bookmark@& pBkmk, uint& itemsCount,int i1,int i2,int i3)
-#else
+#elif ver < 8.3.8
 	save uint getDataSource(IV8DataSource@&, ITextEditor& ted, IV8Bookmark@& pBkmk, uint& itemsCount,int i1,int i2,int i3,int i4,int i5,int i6,int i7,int i8,int i9)
+#else
+	save uint getDataSource(IV8DataSource@&, ITextEditor& ted, int i10, IV8Bookmark@& pBkmk, uint& itemsCount,int i1,int i2,int i3,int i4,int i5,int i6,int i7,int i8,int i9)
 #endif
 	+1
 #if ver < 8.3

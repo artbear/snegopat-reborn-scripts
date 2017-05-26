@@ -22,7 +22,7 @@
 	//bool operator<=(const TextPosition&in)const|??NTextPosition@core@@QBE_NABV01@@Z
 	TextPosition& opAssign(const TextPosition&in)|??4TextPosition@core@@QAEAAV01@ABV01@@Z
 	//TextPosition& operator=(const LabelData&in)|??4TextPosition@core@@QAEAAV01@ABVLabelData@1@@Z
-	//bool operator==(const TextPosition&in)const|??8TextPosition@core@@QBE_NABV01@@Z
+	bool opEquals(const TextPosition&in)const|??8TextPosition@core@@QBE_NABV01@@Z
 	//bool operator>(const TextPosition&in)const|??OTextPosition@core@@QBE_NABV01@@Z
 	//bool operator>=(const TextPosition&in)const|??PTextPosition@core@@QBE_NABV01@@Z
 
@@ -31,24 +31,8 @@
 :virt
 	0
 	void virt_dtor()
-	void onLoad()
-	// Стоит void onLoad() Наверное здесь
-	save void onClearText()
-	+1	//void setSelectionLabels(const LabelDataVector&in, const LabelDataVector&in)
-	+1	//void onChangeTextStart(const TextPosition&in, const TextPosition&in)
-	+1	//void onChangeTextStop(const TextPosition&in, const TextPosition&in)
-	// Теперь снова void onLoad() Наверное тут:
-	+1	//void onSelectionRecalculateFinished()
-	+1	//void onAddRemoveLabel(bool, bool, MarkType, char const*, int, int)
-	+1	//void serializeLabels(IOutPersistenceStorage*)
-	+1	//void deserializeLabels(class IInPersistenceStorage*)
-	+1	//bool createNewAction(DocActionType, const TextPosition&in, const TextPosition&in, IUnknown*)
-	+1	//void closeNewAction(DocActionType, const TextPosition&in, const TextPosition&in)
-	+1	//void onTextAreaModifyPrepare(const TextPosition&in, const TextPosition&in)
-	+1	//void onTextAreaModified(bool, const TextPosition&in, const TextPosition&in, const TextPosition&in, const TextPosition&in)
-	+1	//void onTextAreaRemoveLabel(MarkType, char const*, int, int, bool)
-	+1	//void onSetSelectRangeStart(const TextPosition&in, const TextPosition&in)
-	+1	//void onSetSelectRangeStop(const TextPosition&in, const TextPosition&in)
+	//13
+	//save void onTextAreaModified(bool, const TextPosition&in, const TextPosition&in, const TextPosition&in, const TextPosition&in)
 	
 :dlls
 #if ver < 8.3
@@ -58,18 +42,27 @@
 #endif
 	//void ctor()|??0TextManager@core@@QAE@XZ
 	//void dtor()|??1TextManager@core@@UAE@XZ
+	void onTextAreaModified(bool, const TextPosition&in, const TextPosition&in, const TextPosition&in, const TextPosition&in)|?onTextAreaModified@TextManager@core@@UAEX_NABVTextPosition@2@111@Z
+	void onSelectionRecalculateFinished(void)|?onSelectionRecalculateFinished@TextManager@core@@UAEXXZ
+	void onSetSelectRangeStop(const TextPosition&,const TextPosition&)|?onSetSelectRangeStop@TextManager@core@@UAEXABVTextPosition@2@0@Z
 	void clearText()|?clearText@TextManager@core@@QAEXXZ
 	bool empty()|?empty@TextManager@core@@QAE_NXZ
 	int getLinesCount()|?getLinesCount@TextManager@core@@QAEHXZ
-	bool getLine(int, v8string&out)|?getLine@TextManager@core@@QAE_NHPAV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@@Z
 	bool save(v8string&)|?save@TextManager@core@@QAE_NAAV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@@Z
 	uint getCashObject(IUnknown@&)|?getCashObject@TextManager@core@@QAE?AV?$InterfacePtr@VITextManagerCash@core@@@2@XZ
 	bool getLineFast(int, v8string&, IUnknown& cash)|?getLineFast@TextManager@core@@QAE_NHPAV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@PAVITextManagerCash@2@@Z
+	int getLineLength(int, bool)|?getLineLength@TextManager@core@@QAEHH_N@Z
+	void getSelectRange(TextPosition&, TextPosition&)|?getSelectRange@TextManager@core@@QAEXAAVTextPosition@2@0@Z
+	void setSelectRange(const TextPosition&in, const TextPosition&in)|?setSelectRange@TextManager@core@@QAEXABVTextPosition@2@0@Z
+	void setSelectRange(int, int, int, int)|?setSelectRange@TextManager@core@@QAEXHHHH@Z
+	void setSelectText(int_ptr, bool)|?setSelectText@TextManager@core@@QAEXPB_W_N@Z
+	void clearTextSelection()|?clearTextSelection@TextManager@core@@QAEXXZ
+	void getTextArea(const TextPosition&in, const TextPosition&in, int_ptr&out result)|?getTextArea@TextManager@core@@QAEXABVTextPosition@2@0PAPA_W@Z
 #if ver<1
+	bool getLine(int, v8string&out)|?getLine@TextManager@core@@QAE_NHPAV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@@Z
 	void addAction(const v8string&in, const TextPosition&in, const TextPosition&in)|?addAction@TextManager@core@@QAEXABV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@ABVTextPosition@2@1@Z
 	void addAction(bool, MarkType, char const*, int, int, bool)|?addAction@TextManager@core@@QAEX_NW4MarkType@2@PBDHH0@Z
 	void clearRedoUndo()|?clearRedoUndo@TextManager@core@@QAEXXZ
-	void clearTextSelection()|?clearTextSelection@TextManager@core@@QAEXXZ
 	void* copyAreaToHGlobal(const TextPosition&in, const TextPosition&in, bool)|?copyAreaToHGlobal@TextManager@core@@QAEPAXABVTextPosition@2@0_N@Z
 	void* copySelectionToHGlobal(bool)|?copySelectionToHGlobal@TextManager@core@@QAEPAX_N@Z
 	bool deleteLine(int)|?deleteLine@TextManager@core@@QAE_NH@Z
@@ -93,7 +86,6 @@
 	void getLabelsPosition(vector<MarkType, allocator<MarkType> > const&, multimap<TextPosition, LabelData, struct stlp_std::less<TextPosition>, allocator<struct stlp_std::pair<TextPosition const , LabelData> > >&)|?getLabelsPosition@TextManager@core@@QAEXABV?$vector@W4MarkType@core@@V?$allocator@W4MarkType@core@@@stlp_std@@@stlp_std@@AAV?$multimap@VTextPosition@core@@VLabelData@2@U?$less@VTextPosition@core@@@stlp_std@@V?$allocator@U?$pair@$$CBVTextPosition@core@@VLabelData@2@@stlp_std@@@5@@4@@Z
 	unsigned int getLastActionItemCount()|?getLastActionItemCount@TextManager@core@@QAEIXZ
 	bool getLineFast(int, v8string*, deque<LabelData, allocator<LabelData> >*, ITextManagerCash*)|?getLineFast@TextManager@core@@QAE_NHPAV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@PAV?$deque@VLabelData@core@@V?$allocator@VLabelData@core@@@stlp_std@@@4@PAVITextManagerCash@2@@Z
-	int getLineLength(int, bool)|?getLineLength@TextManager@core@@QAEHH_N@Z
 	int getLinesCountSelection()|?getLinesCountSelection@TextManager@core@@QAEHXZ
 	int getMaxLineLength(int*)|?getMaxLineLength@TextManager@core@@QAEHPAH@Z
 	int getMpodifyActionCounter()|?getMpodifyActionCounter@TextManager@core@@QAEHXZ
@@ -103,7 +95,6 @@
 	wchar_t const* getSelectText()|?getSelectText@TextManager@core@@QAEPB_WXZ
 	void getSelectionLabels(vector<LabelData, allocator<LabelData> >&, vector<LabelData, allocator<LabelData> >&, set<MarkType, struct stlp_std::less<MarkType>, allocator<MarkType> > const&)|?getSelectionLabels@TextManager@core@@QAEXAAV?$vector@VLabelData@core@@V?$allocator@VLabelData@core@@@stlp_std@@@stlp_std@@0ABV?$set@W4MarkType@core@@U?$less@W4MarkType@core@@@stlp_std@@V?$allocator@W4MarkType@core@@@4@@4@@Z
 	bool getSrcLineNoByCurrentLineNo(int, set<int, struct stlp_std::less<int>, allocator<int> >&)|?getSrcLineNoByCurrentLineNo@TextManager@core@@QAE_NHAAV?$set@HU?$less@H@stlp_std@@V?$allocator@H@2@@stlp_std@@@Z
-	void getTextArea(const TextPosition&in, const TextPosition&in, wchar_t**)|?getTextArea@TextManager@core@@QAEXABVTextPosition@2@0PAPA_W@Z
 	ITextManagerSite* getTextManagerSite()|?getTextManagerSite@TextManager@core@@QAEPAVITextManagerSite@2@XZ
 	bool getTextPositionByOffset(TextPosition, unsigned int, TextPosition&)|?getTextPositionByOffset@TextManager@core@@QAE_NVTextPosition@2@IAAV32@@Z
 	bool getUndoActionCode(DocActionType&)|?getUndoActionCode@TextManager@core@@QAE_NAAW4DocActionType@2@@Z

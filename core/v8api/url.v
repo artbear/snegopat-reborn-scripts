@@ -43,7 +43,7 @@
 #else
 	core83.dll
 #endif
-	v8string Url_escape(const v8string&in, const v8string&in)|?escape@URL@core@@SA?AV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@ABV34@0@Z
+	//v8string Url_escape(const v8string&in, const v8string&in)|?escape@URL@core@@SA?AV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@ABV34@0@Z
 	//URL Url_prepareURL(const v8string&in)|?prepareURL@URL@core@@SA?AV12@ABV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@@Z
 	v8string Url_unescape(const v8string&in)|?unescape@URL@core@@SA?AV?$basic_string@_WV?$char_traits@_W@stlp_std@@V?$allocator@_W@2@@stlp_std@@ABV34@@Z
 

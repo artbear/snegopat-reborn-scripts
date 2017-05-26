@@ -5,90 +5,6 @@
 #pragma once
 #include "../../all.h"
 
-// Типы лексем, используемые встроенным в снегопат парсером
-enum LexemTypes
-{
-    endOfText = 0,
-    lexUnknown = 0,
-    lexRemark,      // комментарий
-    lexQuote,       // в кавычках
-    lexQuoteOpen,   // в открытых кавычках (нет завершающей кавычки)
-    lexDate,        // дата
-    lexDateOpen,    // дата без завершающего апострофа
-    lexNumber,      // число
-    lexPreproc,     // инструкция препроцессора
-    lexDirective,   // директива выполнения
-    lexLabel,       // метка
-    lexLPar,        // (
-    lexRPar,        // )
-    lexLBrt,        // [
-    lexRBrt,        // ]
-    lexEqual,       // =
-    lexComma,       // ,
-    lexSemicolon,   // ;
-    lexPlus,        // +
-    lexMinus,       // -
-    lexMult,        // *
-    lexDivide,      // /
-    lexMod,         // %
-    lexQuestion,    // ?
-    lexPeriod,      // .
-    lexLess,        // <
-    lexLessEq,      // <=
-    lexGrat,        // >
-    lexGratEq,      // >=
-    lexNotEq,       // <>
-    lexName,        // идентификатор
-    // Ключевые слова
-    kwIf,
-    kwThen,
-    kwElsIf,
-    kwEndIf,
-    kwElse,
-    kwFor,
-    kwEach,
-    kwIn,
-    kwTo,
-    kwWhile,
-    kwDo,
-    kwEndDo,
-    kwProcedure,
-    kwFunction,
-    kwEndProcedure,
-    kwEndFunction,
-    kwVar,
-    kwGoto,
-    kwReturn,
-    kwContinue,
-    kwBreak,
-    kwAnd,
-    kwOr,
-    kwNot,
-    kwTry,
-    kwExcept,
-    kwRaise,
-    kwEndTry,
-    kwNew,
-    kwExecute,
-    kwTrue,
-    kwFalse,
-    kwAddHandler,
-    kwRemoveHandler,
-    kwExport,
-    kwNull,
-    kwUndefined,
-    kwVal,
-    // Спец-токены для синтакс-парсера, добавляются в начало текста для задания под-алгоритма парсера
-    // допустимы только методы. Указывается, если анализ идет в общем модуле,
-    // или начинается с середины модуля между методами
-    onlyMeths,
-    // Указывается, если анализ начинается с части модуля, за которой нет методов
-    onlyMethsAndStatements,
-    // Указывается при анализе с начала модуля, когда после уже есть методы
-    onlyVarsAndMethods,
-    kwCount = onlyMeths - lexName - 1,
-};
-
 // Для совместимости со SnegAPI
 enum Lexems {
     ltUnknown,		// Un
@@ -242,10 +158,10 @@ RegExp extractFileExtRex("(?<\\.)[^\\.]*$");
 RegExp whiteSpaceRex("\\s+");
 RegExp ucaseLetterRex("\\p{Upper}");
 RegExp scriptTagsRex("""^(?://(\w+)\:|\$(\w+))[ \t]*(.*?)\s*?\n""");
+RegExp newlines("\\n");
 
 // Проверка, завершается ли строка текста открытым литералом
-bool isLineEndWithOpenQuote(const string& line)
-{
+bool isLineEndWithOpenQuote(const string& line) {
     auto res = line.match(quotesRex);
     return res.matches > 0 && (res.len(res.matches - 1, 0) == 1 || res.text(res.matches - 1, 0).substr(-1) != "\"");
 }
@@ -253,8 +169,7 @@ bool isLineEndWithOpenQuote(const string& line)
 // Функция для чтения содержимого текстового файла.
 // Чтение осуществляется с помощью встроенного объекта 1С "ТекстовыйДокумент".
 // Можно указать кодировку текста.
-bool readTextFile(v8string& result, const string& path, const string& encoding = "")
-{
+bool readTextFile(v8string& result, const string& path, const string& encoding = "") {
     IContext&& textDoc;
     currentProcess().createByClsid(CLSID_TxtEdtDoc, IID_IContext, textDoc);
     if (textDoc is null)
@@ -272,7 +187,6 @@ bool readTextFile(v8string& result, const string& path, const string& encoding =
         params.values[1] = encoding;
     pCtxDef.getParamDefValue(methPos, 2, params.values[2]);
    
-    Value retVal;
     textDoc.callMeth(methPos, params.retVal, params.args);
     
     ITextManager&& itm = textDoc.unk;
@@ -285,8 +199,7 @@ class ValueParamsVector {
     array<Value>&& values;
     Value retVal;
 
-    ValueParamsVector(uint argsCount = 0)
-    {
+    ValueParamsVector(uint argsCount = 0) {
         &&values = array<Value>(argsCount);
         if (argsCount > 0) {
             uint mem = 4 * argsCount;
@@ -301,37 +214,30 @@ class ValueParamsVector {
 class ILexem {
     protected lexem lex;
     protected IV8Lexer&& owner;
-    ILexem(const lexem& l, IV8Lexer&& o)
-    {
+    ILexem(const lexem& l, IV8Lexer&& o) {
         lex = l;
         &&owner = o;
     }
 
-    Lexems get_type()
-    {
+    Lexems get_type() {
         return Lexems(lex.type);
     }
-    uint get_start()
-    {
+    uint get_start() {
         return lex.start;
     }
-    uint get_length()
-    {
+    uint get_length() {
         return lex.length;
     }
-    uint get_line()
-    {
+    uint get_line() {
         return lex.line;
     }
-    string get_text()
-    {
+    string get_text() {
         return lex.text;
     }
 };
 
 class IV8Lexer {
-    IV8Lexer(const string& t, uint sl)
-    {
+    IV8Lexer(const string& t, uint sl) {
         //uint t1 = GetTickCount();
         _text = t;
         lex_provider lp(_text.cstr, sl);
@@ -378,41 +284,33 @@ class IV8Lexer {
     protected UintMap<uint> lexemPos;
     string _text;
     string _reStream;
-    uint get_lexemCount()
-    {
+    uint get_lexemCount() {
         return lexems.length;
     }
-    ILexem&& lexem(uint idx)
-    {
+    ILexem&& lexem(uint idx) {
         return idx < lexems.length ? lexems[idx] : null;
     }
-    uint get_namesCount()
-    {
+    uint get_namesCount() {
         return names.length;
     }
-    string name(uint idx)
-    {
+    string name(uint idx) {
         return idx < names.length ? names[idx] : string();
     }
-    int idxOfName(const string& name)
-    {
+    int idxOfName(const string& name) {
         auto fnd = findNames.find(name);
         return fnd.isEnd() ? -1 : fnd.value;
     }
-    int posToLexem(uint posInReStream)
-    {
+    int posToLexem(uint posInReStream) {
         auto find = lexemPos.find(posInReStream);
         return find.isEnd() ? -1 : find.value;
     }
-    string strNameIdx(const string& name)
-    {
+    string strNameIdx(const string& name) {
         auto fnd = findNames.find(name);
         return fnd.isEnd() ? string() : "Nm" + formatInt(fnd.value, "0", 6);
     }
 };
 
-Lexems lexType(uint t)
-{
+Lexems lexType(uint t) {
     switch (t) {
     case lexRemark:      // комментарий
         return ltRemark;
@@ -556,8 +454,7 @@ const string lexAbbr = "UnRmQtDtNuPrDrLbLpRpLrRrEqCmScPlMnMuDvMoQsPdLsLeGtGeNeNm
 // Метод получает текст текущего метода до текущей позиции каретки.
 // Началом метода считаются либо ключевые слова Процедура/Функция, либо текст после слов КонецПроцуры/КонецФункции, либо всё от начала модуля.
 // После нахождения начала метода к нему также ищется директива, а также определяется первая виртуальная лексема для парсера текста.
-LexemTypes getMethodText(TextManager& pTextManager, uint& line, uint col, bool bOnlyMeths, string&out methodText, execContextTypes&out directive)
-{
+LexemTypes getMethodText(TextManager& pTextManager, uint& line, uint col, bool bOnlyMeths, string&out methodText, execContextTypes&out directive) {
     directive = ecNone;
     uint startLine = line;
     array<string> lines;
