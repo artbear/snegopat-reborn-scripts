@@ -270,10 +270,9 @@
 		const Guid& moduleExpandType(const Guid& propId)
 		+1
 		// Семён
-		#if ver >= 8.3.10
-		+2
-		#elif ver >= 8.3.9
+		#if ver >= 8.3.9
 		+1
+		#endif
 		//
 		uint openModule(ITextManager@&, const Guid& propId, bool s, bool open, ITextEditor@& editor)
 		
