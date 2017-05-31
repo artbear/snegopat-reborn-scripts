@@ -537,8 +537,8 @@ class IV8MDObject {
                     Vector v;
                     emh.hasModule(propUuid, v);
                     if (v.end > v.start) {
-                        // Артур в 8.3.10 и 8.3.9 метод IMDEditModuleHelper.openModule не работает, поэтому использую хак выше!
-                        #if ver >= 8.3.9
+                        // Артур в 8.3.10 метод IMDEditModuleHelper.openModule не работает, поэтому использую хак выше!
+                         #if ver >= 8.3.10
                             var2val(propIdx, val123);
                             val123.getString(n123);
                             if (n123 == "Форма"){
@@ -558,12 +558,12 @@ class IV8MDObject {
                             if (textEditor !is null) {
                                 TextDoc&& tdoc = textDocStorage.find(textMan);
                                 if (tdoc !is null) {
-                                    TextWnd&& wnd = tdoc.findWnd(textEditor);
-                                    if (wnd !is null)
+                                   TextWnd&& wnd = tdoc.findWnd(textEditor);
+                                   if (wnd !is null)
                                         return wnd.getComWrapper();
                                 }
                             }
-                        #endif 
+                        #endif  
                     }
                 }
             }
