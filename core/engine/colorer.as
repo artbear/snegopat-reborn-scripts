@@ -65,7 +65,9 @@ enum SciLineStates {
 	LS_METHODBODY = 32,
 	LS_SUBCONDITION = 64,
 	LS_CUSTOMBLOCKEND = 128,
-	LS_MULTILINESTRING = 256
+	LS_MULTILINESTRING = 256,
+	LS_TRY = 512,
+	LS_PREPROC = 1024
 };
 
 
@@ -341,6 +343,20 @@ class ScintillaDesignerEventsHandler {
 		debugMode = st.cmdState.bEnable;
 	}
 
+	void OnFoldUnfoldAll(CmdHandlerParam& cmd, array<Variant>& params) {
+		if (!cmd._isBefore) {
+			ScintillaEditor&& activeSciEditor = this.activeScintillaEditor(); if (activeSciEditor is null) return;
+			if (cmd._cmdNumber == 105) { //свернуть все
+				activeSciEditor.foldUnfoldAll(true);
+			} else if (cmd._cmdNumber == 106) { //развернуть все
+				activeSciEditor.foldUnfoldAll(false);
+			}
+		}
+	
+	}
+
+	
+
 };
 
 
@@ -413,6 +429,9 @@ class ScintillaInfo : EditorInfo {
 
 		oneDesigner._events.addCommandHandler("{00000000-0000-0000-0000-000000000000}", 68, sciEventsHandlerDisp, "OnGlobalSearch"); //глобальный поиск
 		oneDesigner._events.addCommandHandler("{00000000-0000-0000-0000-000000000000}", 69, sciEventsHandlerDisp, "OnGlobalSearch"); //глобальная замена
+
+		oneDesigner._events.addCommandHandler("{00000000-0000-0000-0000-000000000000}", 105, sciEventsHandlerDisp, "OnFoldUnfoldAll"); //свернуть все
+		oneDesigner._events.addCommandHandler("{00000000-0000-0000-0000-000000000000}", 106, sciEventsHandlerDisp, "OnFoldUnfoldAll"); //развернуть все
 
 		oneDesigner._events.connect(oneDesigner._me(), "onIdle", sciEventsHandlerDisp, "OnIdle");
 	}
@@ -940,7 +959,7 @@ class ScintillaSetup {
 		addStyle(SciStyleDefinition(STYLE_INDENTGUIDE, "Линии выравнивания", 0xCCCCCC));
 		addStyle(SciStyleDefinition(stCurrentLine, "Цвет фона текущей линии", 0xF7E8D7));
 		addStyle(SciStyleDefinition(stSelectionHighlight, "Цвет фона подсветки выделенного слова", rgb(0, 0, 255)));
-
+		
 		stylesByName.insert("default", STYLE_DEFAULT);
 		stylesByName.insert("keyword", stKeyword);
 		stylesByName.insert("comment", stRemark);
@@ -970,6 +989,14 @@ class ScintillaSetup {
 	color clrCurrentLine;
 	color clrSelectedWordHighlight;
 	bool highlightFoldHeader = false;
+
+	bool foldComment = true;
+	bool foldCond = false;
+	bool foldLoop = false;
+	bool foldMultiString = false;
+	bool foldPreproc = false;
+	bool foldProc = true;
+	bool foldTry = false;
 
 	uint get_stylesCount() const {
 		return styles.length;
@@ -1015,7 +1042,11 @@ class ScintillaSetup {
 
 		//если цвет текущей строки равен цвету фона редактора тогда выключаем подсветку текущей строки
 		highlightCurrentLine = (clrCurrentLine != styleByNum(STYLE_DEFAULT).back);
-
+		
+		swnd.setStyleEolFilled(stString, 1);
+		//sciFunc(swnd.editor_ptr, SCI_SETVIEWEOL, 1, 0);
+		sciFunc(swnd.editor_ptr, SCI_SETEOLMODE, SC_EOL_LF, 0);
+		
 		swnd.setCaretWidth(caretWidth);
 		_setupMarks(swnd);
 		if (showLineNumbers)
@@ -1036,7 +1067,6 @@ class ScintillaSetup {
 			sciFunc(swnd.editor_ptr, SCI_SETCARETLINEVISIBLE, 1,0);
 			sciFunc(swnd.editor_ptr, SCI_SETCARETLINEBACK, clrCurrentLine,0);
 		}
-		//sciFunc(swnd.editor_ptr, SCI_FOLDALL, 0, 0);
 	}
 	void Preview(bool msg) {
 		if (openedSciEditors.length > 0) {
@@ -1102,18 +1132,20 @@ class ScintillaSetup {
 		swnd.defineMarker(SC_MARKNUM_FOLDEREND,		SC_MARK_BOXPLUSCONNECTED);
 		swnd.defineMarker(SC_MARKNUM_FOLDERMIDTAIL, SC_MARK_TCORNER);
 
-		swnd.setMarkerFore(SC_MARKNUM_FOLDEROPEN, clrCurrentLine);
-		swnd.setMarkerBack(SC_MARKNUM_FOLDEROPEN, 0);
-		swnd.setMarkerFore(SC_MARKNUM_FOLDER, clrCurrentLine);
-		swnd.setMarkerBack(SC_MARKNUM_FOLDER, 0);
-		swnd.setMarkerFore(SC_MARKNUM_FOLDEREND, clrCurrentLine);
-		swnd.setMarkerBack(SC_MARKNUM_FOLDEREND, 0);
-		swnd.setMarkerFore(SC_MARKNUM_FOLDEROPENMID, clrCurrentLine);
-		swnd.setMarkerBack(SC_MARKNUM_FOLDEROPENMID, 0);
+		int foldMarksLineColor = rgb(128, 128, 128); // styleByNum(STYLE_LINENUMBER).fore;
+		int foldMakrsBackColor = styleByNum(STYLE_DEFAULT).back; //sciFunc(swnd.editor_ptr, SCI_GETMARGINBACKN, smFolding, 0);
+		swnd.setMarkerFore(SC_MARKNUM_FOLDEROPEN, foldMakrsBackColor);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDEROPEN, foldMarksLineColor);
+		swnd.setMarkerFore(SC_MARKNUM_FOLDER, foldMakrsBackColor);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDER, foldMarksLineColor);
+		swnd.setMarkerFore(SC_MARKNUM_FOLDEREND, foldMakrsBackColor);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDEREND, foldMarksLineColor);
+		swnd.setMarkerFore(SC_MARKNUM_FOLDEROPENMID, foldMakrsBackColor);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDEROPENMID, foldMarksLineColor);
 		
-		swnd.setMarkerBack(SC_MARKNUM_FOLDERSUB, 0);
-		swnd.setMarkerBack(SC_MARKNUM_FOLDERTAIL, 0);
-		swnd.setMarkerBack(SC_MARKNUM_FOLDERMIDTAIL, 0);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDERSUB, foldMarksLineColor);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDERTAIL, foldMarksLineColor);
+		swnd.setMarkerBack(SC_MARKNUM_FOLDERMIDTAIL, foldMarksLineColor);
 	}
 
 };
@@ -1199,7 +1231,7 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 	void attach(TextWnd&& tw) override {
 		TextEditorWindow::attach(tw);
 		
-		tw.wnd.setMessages(array<uint> = {WM_SETFOCUS, WM_DESTROY, WM_SIZE, WM_NOTIFY, WM_NCCALCSIZE, WM_CHAR, WM_KEYDOWN, WM_SYSKEYDOWN});
+		tw.wnd.setMessages(array<uint> = {WM_SETFOCUS, WM_DESTROY, WM_SIZE, WM_NOTIFY, WM_NCCALCSIZE, WM_CHAR, WM_KEYDOWN, WM_SYSKEYDOWN, 0x0084, 0x0085});
 		swnd.create(tw.hWnd, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 		Rect rc;
 		GetClientRect(txtWnd.hWnd, rc);
@@ -1215,6 +1247,7 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 		&&wnd = attachWndToFunction(swnd.hEditor, WndFunc(this.ScnWndProc), array<uint> = {WM_SETFOCUS, WM_KILLFOCUS, WM_CHAR, WM_KEYDOWN, WM_SYSKEYDOWN, WM_RBUTTONDOWN});
 		editorsManager._subscribeToSelChange(tw.ted, this);
 		openedSciEditors.insertLast(&&this);
+		initialFolding();
 	}
 	
 	void detach() override {
@@ -1238,8 +1271,11 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 		case WM_SIZE:
 			onSizeParent();
 			break;
-		case WM_NCCALCSIZE:
-			return 0;	// чтобы убрать 1Сные скроллеры
+		case WM_NCCALCSIZE: 
+			return 0; // чтобы убрать 1Сные скроллеры
+		case 0x0084: //WM_NCHITTEST:
+		case 0x0085: //WM_NCPAINT:
+			return 0;
 		case WM_NOTIFY:
 			return l != 0 ? onNotifyParent(toSCNotification(l).ref) : 0;
 		case WM_CHAR:
@@ -1263,12 +1299,13 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 	}
 	// Вызывается после изменения выделения в штатном текстовом редакторе
 	void onSelectionChanged(ITextEditor&, const TextPosition& tpStart, const TextPosition& tpEnd) override {
-		//Message("onSelectionChanged");
+		//Message("onSelectionChanged 1");
 		if (inReflection)	// идёт смена выделения, инициализированная нами
 			return;
+		//Message("onSelectionChanged 2");
 		// Установка этого флага блокирует уведомление штатного редактора об изменении выделения
 		// в сцинтилле, чтобы избежать лишнего цикла
-		inReflection = true;
+		inReflection = true; //Message("inReflection true 1");
 		int posColStart = getPosition(tpStart);
 		// если выделение "пустое", то просто переместим каретку
 		if (tpStart == tpEnd) {
@@ -1291,6 +1328,7 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 		return true;
 	}
 	void checkSelectionInIdle(ITextEditor& editor) override {
+		//Message("checkSelectionInIdle");
 		if (inReflection)
 			inReflection = false;
 		TextPosition tpStart, tpEnd, tpCaret;
@@ -1309,13 +1347,15 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 		int posAnchor = swnd.anchorPos();
 		int posCurrent = swnd.currentPos();
 		if (posStart != posAnchor || posEnd != posCurrent) {
-			inReflection = true;
+			inReflection = true; //Message("inReflection true 2");
 			if (posStart == posEnd) {
 				swnd.goToPos(posStart);
 			} else {
 				// Иначе установим выделение
 				swnd.setSelection(posStart, posEnd);
 			}
+			//Message("ensureLineVisible");
+			swnd.ensureLineVisible();
 			inReflection = false;
 			
 		}
@@ -1657,9 +1697,11 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 
 	}
 	void updateSelectionInParent() {
+		//Message("updateSelectionInParent 1");
 		if (inReflection)
 			return;
-		inReflection = true;
+		//Message("updateSelectionInParent 2");
+		inReflection = true; //Message("inReflection true 3");
 		TextPosition tpStart, tpEnd;
 		int posStart = swnd.anchorPos(), posEnd = swnd.currentPos();
 		calcPosition(posStart, tpStart);
@@ -1734,28 +1776,100 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 		swnd.setLineState(line, 0);
 		int style = STYLE_DEFAULT;
 		uint linesCount = txtWnd.textDoc.tm.getLinesCount();
-		int levelCurrent;
 		for (;;) {
 			lp.nextWithKeyword(lex);
 			if (lex.line > linesCount) break; //на пустом модуле лексер глючит и выдает случайный номер строки
+
+			int type = lexType(lex.type);
+			//Message("line " + (lex.line + 1) + ", lexemIdxInLine " + lexemIdxInLine + ", type " + type + ", text " + lex.text + ", start " + lex.start);
 			
 			if (lex.line > prevLine) {
+				if ((style == stString) && ((swnd.getLineState(prevLine) & LS_MULTILINESTRING) != 0)) {
+					//последняя лексема предыдущей строки была "многосточный текст", 
+					//раскрасим символы перевода строки в стиль stString, чтобы сработал механизм SCI_STYLESETEOLFILLED
+					string strPrevLine = getTextLine(txtWnd.textDoc.tm, prevLine+1);//нумерация с 1
+					//string strMsg = strPrevLine.dup(); strMsg = strMsg.replace("\r", "\\r"); strMsg = strMsg.replace("\n", "\\n"); Message("prev line: " + strMsg);
+					if (strPrevLine.find("\r\n") > 0) {
+						//Message("RN");
+						swnd.setStyle(2, stString); //в байтах utf-8, \r\n по байту на символ
+						startPos = startPos + 4; //в байтах string, 2 байта на символ
+					} else if (strPrevLine.find("\n") > 0) {
+						//Message("N");
+						swnd.setStyle(1, stString);
+						startPos = startPos + 2;
+					}
+				}
 				lexemIdxInLine = 0;
 				prevLine = lex.line;
 				swnd.setLineState(lex.line, 0);
 			}
-			//Message("line " + (lex.line + 1) + ", lexemIdxInLine " + lexemIdxInLine + ", type " + lex.type + ", text " + lex.text);
+
+			foldingProcessor.preprocType = 0;
+			if (lexemIdxInLine == 0) {
+				switch (type) {
+				case ltRemark:
+					swnd.setLineState(lex.line, LS_COMMENTLINE);
+					break;
+				case ltTry:
+					swnd.setLineState(lex.line, LS_TRY);
+					break;
+				case ltIf:
+				case ltElse:
+				case ltElsIf:
+					swnd.setLineState(lex.line, LS_CONDITION);
+					break;
+				case ltWhile:
+				case ltFor:
+					swnd.setLineState(lex.line, LS_LOOP);
+					break;
+				case ltProcedure:
+				case ltFunction:
+					swnd.setLineState(lex.line, LS_METHOD);
+					break;
+				case ltPreproc: {
+					//Message("line " + (lex.line + 1) + ", lexemIdxInLine " + lexemIdxInLine + ", type " + type + ", text " + lex.text);
+					swnd.setLineState(lex.line, LS_PREPROC);
+					string strPreproc = lex.text;
+					strPreproc.makeLower();
+					if ((strPreproc.substr(0, 5) == "#если") || (strPreproc.substr(0, 8) == "#область")) {
+						foldingProcessor.preprocType = 1;
+					} else if ((strPreproc.substr(0, 10) == "#конецесли") || (strPreproc.substr(0, 13) == "#конецобласти")) {
+						foldingProcessor.preprocType = 2;
+					}
+				}
+				break;
+				}
+			}
+
+			if (type == ltQuote) {
+				//Message("line " + (lex.line + 1) + ", lexemIdxInLine " + lexemIdxInLine + ", type " + type + ", text " + lex.text);
+				string strStr = lex.text;
+				if ((lexemIdxInLine == 0) && (strStr[0] == '|')) {
+					swnd.setLineState(lex.line, LS_MULTILINESTRING);
+				} else {
+					int quoteCount = 0;
+					if (strStr[0] == '\"') {
+						for (uint i = 0; i < strStr.length; i++) {
+							int ch = strStr[i];
+							if (ch == '\"') quoteCount++;
+							if (ch == '\n') break;
+						}
+					}
+					if ((quoteCount % 2) == 0) { //в строке четное кол-во кавычек, значит строка закрытая
+						//Message("четное колво кавычек");
+					} else {
+						swnd.setLineState(lex.line, LS_MULTILINESTRING);
+						//Message("нечетное колво кавычек");
+					}
+				}
+			}
 			
-			if ((lex.type == ltRemark) && (lexemIdxInLine == 0)) 
-				swnd.setLineState(lex.line, LS_COMMENTLINE);
-			
-			int type = lexType(lex.type);
 			foldingProcessor.lexemIdxInLine = lexemIdxInLine;
 			foldingProcessor.process(lex.line, type);
 
 			len = lex.text.toUtf8().length;
 			if (lex.start > startPos) {
-				swnd.setStyle((lex.start - startPos) / 2, STYLE_DEFAULT);
+				swnd.setStyle((lex.start - startPos) / 2, STYLE_DEFAULT); //пробельные символы в utf-8 по одному байту
 				startPos = lex.start;
 			}
 			
@@ -1783,11 +1897,12 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 					style = stLabel;
 			} else
 				style = stIdentifier;
+
 			swnd.setStyle(len, style);
 			startPos += lex.length * 2;
+
 			wasPoint = type == ltPeriod;
 			lexemIdxInLine++;
-			levelCurrent = swnd.foldLevel(lex.line);
 			if (lex.type == 0 || lp.atEnd()) {
 				foldingProcessor.setLevelForProcessedLine();
 				break;
@@ -1837,6 +1952,38 @@ class ScintillaEditor : TextEditorWindow, SelectionChangedReceiver {
 	//		curLineMarkerHandle = swnd.addMarker(cl, markCurrentLine);
 	//	}
 	//}
+
+	void initialFolding() {
+		int lineCount = swnd.getLineCount();
+		for (int line = 0; line < lineCount; line++){
+			int level = swnd.foldLevel(line);
+			if ((level & SC_FOLDLEVELHEADERFLAG) != 0){
+				bool stateComment = ((swnd.getLineState(line) & LS_COMMENTLINE) != 0);
+				bool stateProc = ((swnd.getLineState(line) & LS_METHOD) != 0);
+				bool stateCond = ((swnd.getLineState(line) & LS_CONDITION) != 0);
+				bool stateLoop = ((swnd.getLineState(line) & LS_LOOP) != 0);
+				bool stateMultiString = ((swnd.getLineState(line) & LS_MULTILINESTRING) != 0);
+				bool stateTry = ((swnd.getLineState(line) & LS_TRY) != 0);
+				bool statePreproc = ((swnd.getLineState(line) & LS_PREPROC) != 0);
+
+				if (sciSetup.foldComment && stateComment) swnd.toggleFold(line);
+				if (sciSetup.foldProc && stateProc) swnd.toggleFold(line);
+				if (sciSetup.foldCond && stateCond) swnd.toggleFold(line);
+				if (sciSetup.foldLoop && stateLoop) swnd.toggleFold(line);
+				if (sciSetup.foldMultiString && stateMultiString) swnd.toggleFold(line);
+				if (sciSetup.foldTry && stateTry) swnd.toggleFold(line);
+				if (sciSetup.foldPreproc && statePreproc) swnd.toggleFold(line);
+			}
+		}
+	}
+
+	void foldUnfoldAll(bool fold){
+		if (fold) 
+			initialFolding();
+		else 
+			sciFunc(swnd.editor_ptr, SCI_FOLDALL, SC_FOLDACTION_EXPAND, 0);
+		
+	}
 };
 
 class FoldingProcessor {
@@ -1848,6 +1995,8 @@ class FoldingProcessor {
 	ScintillaWindow&& swnd;
 	int lexemIdxInLine;
 	int initLine;
+	uint preprocType; //1 - открывающий (#Если, #Область), 2 - закрывающий (#КонецЕсли, #КонецОбласти)
+	int lastProcessedMultiline = -1;
 
 	FoldingProcessor(ScintillaEditor& e, uint& _line) {
 		// Парсить будем со строки, либо содержащей точку свёртки первого уровня, либо начало модуля
@@ -1885,7 +2034,7 @@ class FoldingProcessor {
 		}
 	}
 	void calcLevelChange(int lexType) {
-		if ((lexType >= ltIf && lexType <= ltEndTry) || lexType==ltRemark) {
+		if ((lexType >= ltIf && lexType <= ltEndTry) || lexType==ltRemark || lexType == ltPreproc || lexType == ltQuote) {
 			switch (lexType) {
 			case ltIf:
 			case ltFor:
@@ -1895,8 +2044,9 @@ class FoldingProcessor {
 				break;
 			case ltProcedure:
 			case ltFunction:
-				level = 1024;
-				currentLineLevel = 1025;
+				//level = 1024;
+				//currentLineLevel = 1025;
+				currentLineLevel++;
 				break;
 			case ltElsIf:
 			case ltElse:
@@ -1912,8 +2062,9 @@ class FoldingProcessor {
 				break;
 			case ltEndProcedure:
 			case ltEndFunction:
-				level = 1025;
-				currentLineLevel = 1024;
+				//level = 1025;
+				//currentLineLevel = 1024;
+				currentLineLevel--;
 				break;
 			case ltRemark:
 				if (lexemIdxInLine == 0) {
@@ -1936,13 +2087,43 @@ class FoldingProcessor {
 						currentLineLevel--;
 						//Message("comment end, line=" + (line + 1) + " level=" + currentLineLevel);
 					}
-					
+				}
+				break;
+
+			case ltPreproc:
+				if (preprocType == 1) currentLineLevel++;
+				if (preprocType == 2) currentLineLevel--;
+				break;
+
+			case ltQuote:
+				if ((line > lastProcessedMultiline) && ((swnd.getLineState(line) & LS_MULTILINESTRING) != 0)) {
+					bool prevLineIsMultiString = ((swnd.getLineState(line - 1) & LS_MULTILINESTRING) != 0);
+					if (!prevLineIsMultiString) {
+						currentLineLevel++;
+						//Message("MultiString start, line=" + (line + 1) + " level=" + currentLineLevel);
+					}
+
+					bool nextLineIsMultiString = false;
+					if ((line + 1) <= (swnd.getLineCount() - 1)) {
+						string strNextLine = swnd.lineOfText(line + 1);
+						strNextLine.ltrim();
+						if (strNextLine.beginFrom("|")) {
+							nextLineIsMultiString = true;
+						}
+					}
+					if (!nextLineIsMultiString) {
+						currentLineLevel--;
+						//Message("MultiString end, line=" + (line + 1) + " level=" + currentLineLevel);
+					}
+					lastProcessedMultiline = line;
 				}
 				break;
 			}
 		} 
+		
 	}
 	void process(int lexLine, int lexType) {
+		
 		if (lexLine != line)
 			setLevelForProcessedLine();
 		setLevelForEmptyLines(lexLine);
@@ -2519,6 +2700,8 @@ enum SciEnums {
 	SCI_GETMARGINSENSITIVEN = 2247,
 	SCI_SETMARGINCURSORN = 2248,
 	SCI_GETMARGINCURSORN = 2249,
+	SCI_SETMARGINBACKN = 2250,
+	SCI_GETMARGINBACKN = 2251,
 	STYLE_DEFAULT = 32,
 	STYLE_LINENUMBER = 33,
 	STYLE_BRACELIGHT = 34,
@@ -3532,6 +3715,4 @@ enum SciEnums {
 	SCLEX_IHEX = 118,
 	SCLEX_TEHEX = 119,
 	SCLEX_JSON = 120,
-
 };
-
